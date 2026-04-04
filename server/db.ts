@@ -1,13 +1,17 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertPatient,
+  InsertPatientFormLink,
+  InsertStaffingSnapshot,
   InsertStaffNotification,
   InsertTriageCase,
   InsertTriageEvent,
   InsertUser,
+  patientFormLinks,
   patients,
   staffNotifications,
+  staffingSnapshots,
   triageCases,
   triageEvents,
   users,
@@ -106,6 +110,70 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function createPatientFormLink(input: InsertPatientFormLink) {
+  const db = await requireDb();
+  const result = await db.insert(patientFormLinks).values(input).$returningId();
+  const linkId = result[0]?.id;
+
+  if (!linkId) {
+    throw new Error("Impossible de créer le lien patient.");
+  }
+
+  const created = await db.select().from(patientFormLinks).where(eq(patientFormLinks.id, linkId)).limit(1);
+  return created[0];
+}
+
+export async function listPatientFormLinks() {
+  const db = await requireDb();
+  return db.select().from(patientFormLinks).orderBy(desc(patientFormLinks.createdAt));
+}
+
+export async function getPatientFormLinkByToken(token: string) {
+  const db = await requireDb();
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(patientFormLinks)
+    .where(
+      and(
+        eq(patientFormLinks.token, token),
+        eq(patientFormLinks.isActive, true),
+        sql`(${patientFormLinks.expiresAt} IS NULL OR ${patientFormLinks.expiresAt} > ${now})`,
+      ),
+    )
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function touchPatientFormLinkUsage(linkId: number) {
+  const db = await requireDb();
+  await db.update(patientFormLinks).set({ lastUsedAt: new Date() }).where(eq(patientFormLinks.id, linkId));
+}
+
+export async function createStaffingSnapshot(input: InsertStaffingSnapshot) {
+  const db = await requireDb();
+  const result = await db.insert(staffingSnapshots).values(input).$returningId();
+  const snapshotId = result[0]?.id;
+
+  if (!snapshotId) {
+    throw new Error("Impossible de créer le snapshot de ressources humaines.");
+  }
+
+  const created = await db
+    .select()
+    .from(staffingSnapshots)
+    .where(eq(staffingSnapshots.id, snapshotId))
+    .limit(1);
+  return created[0];
+}
+
+export async function getLatestStaffingSnapshot() {
+  const db = await requireDb();
+  const rows = await db.select().from(staffingSnapshots).orderBy(desc(staffingSnapshots.createdAt)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function createPatientRecord(input: InsertPatient) {
   const db = await requireDb();
   const result = await db.insert(patients).values(input).$returningId();
@@ -164,27 +232,29 @@ export async function createStaffNotificationRecord(input: InsertStaffNotificati
 
 export async function markNotificationDelivered(notificationId: number, delivered = true) {
   const db = await requireDb();
-  await db
-    .update(staffNotifications)
-    .set({ delivered })
-    .where(eq(staffNotifications.id, notificationId));
+  await db.update(staffNotifications).set({ delivered }).where(eq(staffNotifications.id, notificationId));
 }
 
 export async function listDashboardCases() {
   const db = await requireDb();
 
-  const rows = await db
+  return db
     .select({
       triageCaseId: triageCases.id,
       patientId: patients.id,
       patientFirstName: patients.firstName,
       patientLastName: patients.lastName,
       intakeMethod: patients.intakeMethod,
+      intakeSource: patients.intakeSource,
       preferredLanguage: patients.preferredLanguage,
       chiefComplaint: triageCases.chiefComplaint,
       priority: triageCases.priority,
+      aiRecommendedPriority: triageCases.aiRecommendedPriority,
+      entryMode: triageCases.entryMode,
+      manualPriorityOverride: triageCases.manualPriorityOverride,
       status: triageCases.status,
       queueRank: triageCases.queueRank,
+      queuePressureScore: triageCases.queuePressureScore,
       targetWaitMinutes: triageCases.targetWaitMinutes,
       waitingTimeMinutes: triageCases.waitingTimeMinutes,
       recommendedAction: triageCases.recommendedAction,
@@ -195,42 +265,53 @@ export async function listDashboardCases() {
     .from(triageCases)
     .innerJoin(patients, eq(triageCases.patientId, patients.id))
     .orderBy(triageCases.queueRank, desc(triageCases.createdAt));
-
-  return rows;
 }
 
 export async function listRecentNotifications(limit = 8) {
   const db = await requireDb();
-  return db
-    .select()
-    .from(staffNotifications)
-    .orderBy(desc(staffNotifications.createdAt))
-    .limit(limit);
+  return db.select().from(staffNotifications).orderBy(desc(staffNotifications.createdAt)).limit(limit);
 }
 
 export async function getDashboardSummary() {
   const db = await requireDb();
-  const [row] = await db
+  const [summaryRow] = await db
     .select({
       totalPatients: sql<number>`count(${triageCases.id})`,
       waitingPatients: sql<number>`sum(case when ${triageCases.status} = 'en_attente' then 1 else 0 end)`,
       urgentPatients: sql<number>`sum(case when ${triageCases.priority} in ('urgence_vitale', 'urgence') then 1 else 0 end)`,
+      p1Patients: sql<number>`sum(case when ${triageCases.priority} = 'urgence_vitale' then 1 else 0 end)`,
       avgWaitingMinutes: sql<number>`coalesce(avg(${triageCases.waitingTimeMinutes}), 0)`,
+      manualOverrides: sql<number>`sum(case when ${triageCases.manualPriorityOverride} = true then 1 else 0 end)`,
     })
     .from(triageCases);
 
+  const staffing = await getLatestStaffingSnapshot();
+
   return {
-    totalPatients: Number(row?.totalPatients ?? 0),
-    waitingPatients: Number(row?.waitingPatients ?? 0),
-    urgentPatients: Number(row?.urgentPatients ?? 0),
-    avgWaitingMinutes: Math.round(Number(row?.avgWaitingMinutes ?? 0)),
+    totalPatients: Number(summaryRow?.totalPatients ?? 0),
+    waitingPatients: Number(summaryRow?.waitingPatients ?? 0),
+    urgentPatients: Number(summaryRow?.urgentPatients ?? 0),
+    p1Patients: Number(summaryRow?.p1Patients ?? 0),
+    avgWaitingMinutes: Math.round(Number(summaryRow?.avgWaitingMinutes ?? 0)),
+    manualOverrides: Number(summaryRow?.manualOverrides ?? 0),
+    staffing: staffing
+      ? {
+          doctorsOnDuty: staffing.doctorsOnDuty,
+          nursesOnDuty: staffing.nursesOnDuty,
+          availableDoctors: staffing.availableDoctors,
+          availableNurses: staffing.availableNurses,
+          waitingPatients: staffing.waitingPatients,
+          activeCriticalPatients: staffing.activeCriticalPatients,
+          occupancyPressureScore: staffing.occupancyPressureScore,
+          updatedAt: staffing.createdAt,
+        }
+      : null,
   };
 }
 
 export async function updateCaseStatus(triageCaseId: number, status: InsertTriageCase["status"]) {
   const db = await requireDb();
   await db.update(triageCases).set({ status }).where(eq(triageCases.id, triageCaseId));
-
   const updated = await db.select().from(triageCases).where(eq(triageCases.id, triageCaseId)).limit(1);
   return updated[0];
 }
@@ -244,12 +325,36 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
     return { inserted: false };
   }
 
+  const [formLink] = await Promise.all([
+    createPatientFormLink({
+      createdByUserId: createdByUserId ?? null,
+      label: "QR Hall principal",
+      token: `demo-link-${Date.now()}`,
+      isActive: true,
+    }),
+    createStaffingSnapshot({
+      createdByUserId: createdByUserId ?? null,
+      doctorsOnDuty: 4,
+      nursesOnDuty: 8,
+      availableDoctors: 2,
+      availableNurses: 5,
+      waitingPatients: 9,
+      activeCriticalPatients: 1,
+      occupancyPressureScore: 11,
+      notes: "Charge modérée à élevée en début de soirée.",
+    }),
+  ]);
+
+  const staffing = await getLatestStaffingSnapshot();
+
   const demoPatients = await db
     .insert(patients)
     .values([
       {
         createdByUserId: createdByUserId ?? null,
+        formLinkId: formLink.id,
         intakeMethod: "ocr",
+        intakeSource: "staff_full",
         firstName: "Amina",
         lastName: "Bennani",
         dateOfBirth: "1987-03-15",
@@ -261,7 +366,9 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       },
       {
         createdByUserId: createdByUserId ?? null,
+        formLinkId: formLink.id,
         intakeMethod: "vocal",
+        intakeSource: "staff_full",
         firstName: "Youssef",
         lastName: "El Idrissi",
         dateOfBirth: "1999-08-21",
@@ -273,7 +380,9 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       },
       {
         createdByUserId: createdByUserId ?? null,
+        formLinkId: formLink.id,
         intakeMethod: "manuel",
+        intakeSource: "patient_qr",
         firstName: "Leïla",
         lastName: "Tazi",
         dateOfBirth: "1974-11-02",
@@ -292,6 +401,7 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
     {
       patientId: amina!.id,
       createdByUserId: createdByUserId ?? null,
+      staffingSnapshotId: staffing?.id ?? null,
       chiefComplaint: "Douleur thoracique brutale",
       symptomSummary: "Douleur thoracique intense avec oppression et gêne respiratoire depuis 20 minutes.",
       painLevel: 9,
@@ -310,6 +420,11 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       respiratoryRate: 28,
       systolicBloodPressure: 95,
       priority: "urgence",
+      aiRecommendedPriority: "urgence",
+      entryMode: "standard_ai",
+      manualPriorityOverride: false,
+      skipAiAnalysis: false,
+      queuePressureScore: staffing?.occupancyPressureScore ?? 0,
       status: "en_attente",
       targetWaitMinutes: 15,
       waitingTimeMinutes: 7,
@@ -318,13 +433,21 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
         "Douleur thoracique aiguë.",
         "Gêne respiratoire associée.",
       ]),
+      aiSummaryJson: JSON.stringify({
+        suspectedPriority: "urgence",
+        clinicalSignals: ["douleur thoracique", "essoufflement"],
+        riskFactors: ["possible syndrome coronarien"],
+        suggestedQuestions: ["irradiation", "durée", "ATCD cardiaques"],
+        summary: "Tableau compatible avec un cas urgent nécessitant une évaluation rapide.",
+      }),
       recommendedAction: "Évaluation clinique rapide et monitorage continu.",
-      protocolReference: "ESI niveau 2 simplifié",
+      protocolReference: "ESI niveau 2 simplifié + modulation capacitaire",
       clinicianValidation: "En attente de validation médicale.",
     },
     {
       patientId: youssef!.id,
       createdByUserId: createdByUserId ?? null,
+      staffingSnapshotId: staffing?.id ?? null,
       chiefComplaint: "Malaise avec perte de connaissance",
       symptomSummary: "Episode de perte de connaissance avec reprise incomplète et confusion.",
       painLevel: 3,
@@ -343,6 +466,12 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       respiratoryRate: 31,
       systolicBloodPressure: 82,
       priority: "urgence_vitale",
+      aiRecommendedPriority: "urgence_vitale",
+      entryMode: "manual_p1",
+      manualPriorityOverride: true,
+      manualPriorityReason: "Décision infirmier d’accueil devant altération de conscience.",
+      skipAiAnalysis: true,
+      queuePressureScore: staffing?.occupancyPressureScore ?? 0,
       status: "en_cours",
       targetWaitMinutes: 0,
       waitingTimeMinutes: 0,
@@ -350,14 +479,23 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       rationaleJson: JSON.stringify([
         "Altération de conscience.",
         "Constantes instables.",
+        "Override manuel P1.",
       ]),
+      aiSummaryJson: JSON.stringify({
+        suspectedPriority: "urgence_vitale",
+        clinicalSignals: ["syncope", "détresse respiratoire"],
+        riskFactors: ["instabilité hémodynamique"],
+        suggestedQuestions: [],
+        summary: "Le cas a été traité en priorité vitale immédiate.",
+      }),
       recommendedAction: "Alerte réanimation immédiate.",
-      protocolReference: "ESI niveau 1 simplifié",
+      protocolReference: "Override clinique immédiat P1",
       clinicianValidation: "Pris en charge en salle critique.",
     },
     {
       patientId: leila!.id,
       createdByUserId: createdByUserId ?? null,
+      staffingSnapshotId: staffing?.id ?? null,
       chiefComplaint: "Suspicion de fracture du poignet",
       symptomSummary: "Traumatisme du poignet après chute domestique, douleur modérée, tuméfaction locale.",
       painLevel: 5,
@@ -376,6 +514,11 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       respiratoryRate: 18,
       systolicBloodPressure: 122,
       priority: "semi_urgence",
+      aiRecommendedPriority: "semi_urgence",
+      entryMode: "standard_ai",
+      manualPriorityOverride: false,
+      skipAiAnalysis: false,
+      queuePressureScore: staffing?.occupancyPressureScore ?? 0,
       status: "en_attente",
       targetWaitMinutes: 60,
       waitingTimeMinutes: 24,
@@ -383,8 +526,15 @@ export async function seedDemoIfEmpty(createdByUserId?: number | null) {
       rationaleJson: JSON.stringify([
         "Traumatisme récent sans signe vital critique.",
       ]),
+      aiSummaryJson: JSON.stringify({
+        suspectedPriority: "semi_urgence",
+        clinicalSignals: ["traumatisme membre supérieur"],
+        riskFactors: ["fracture suspectée"],
+        suggestedQuestions: ["déformation", "douleur doigts", "mécanisme chute"],
+        summary: "Prise en charge différable mais nécessitant imagerie et antalgie.",
+      }),
       recommendedAction: "Radiographie et antalgie selon protocole.",
-      protocolReference: "ESI niveau 3 simplifié",
+      protocolReference: "ESI niveau 3 simplifié + modulation capacitaire",
       clinicianValidation: "En attente de validation médicale.",
     },
   ]);
@@ -425,17 +575,24 @@ export async function getCaseById(triageCaseId: number) {
       patientFirstName: patients.firstName,
       patientLastName: patients.lastName,
       intakeMethod: patients.intakeMethod,
+      intakeSource: patients.intakeSource,
       preferredLanguage: patients.preferredLanguage,
       voiceTranscript: patients.voiceTranscript,
       chiefComplaint: triageCases.chiefComplaint,
       symptomSummary: triageCases.symptomSummary,
       priority: triageCases.priority,
+      aiRecommendedPriority: triageCases.aiRecommendedPriority,
+      entryMode: triageCases.entryMode,
+      manualPriorityOverride: triageCases.manualPriorityOverride,
+      manualPriorityReason: triageCases.manualPriorityReason,
+      queuePressureScore: triageCases.queuePressureScore,
       status: triageCases.status,
       targetWaitMinutes: triageCases.targetWaitMinutes,
       waitingTimeMinutes: triageCases.waitingTimeMinutes,
       recommendedAction: triageCases.recommendedAction,
       protocolReference: triageCases.protocolReference,
       clinicianValidation: triageCases.clinicianValidation,
+      aiSummaryJson: triageCases.aiSummaryJson,
       createdAt: triageCases.createdAt,
       updatedAt: triageCases.updatedAt,
     })
@@ -445,4 +602,26 @@ export async function getCaseById(triageCaseId: number) {
     .limit(1);
 
   return rows[0] ?? null;
+}
+
+export async function listActivePatientsForStaff(limit = 20) {
+  const db = await requireDb();
+  return db
+    .select({
+      triageCaseId: triageCases.id,
+      patientDisplayName: sql<string>`concat(${patients.firstName}, ' ', ${patients.lastName})`,
+      priority: triageCases.priority,
+      status: triageCases.status,
+      queueRank: triageCases.queueRank,
+      waitingTimeMinutes: triageCases.waitingTimeMinutes,
+      chiefComplaint: triageCases.chiefComplaint,
+      intakeSource: patients.intakeSource,
+      entryMode: triageCases.entryMode,
+      createdAt: triageCases.createdAt,
+    })
+    .from(triageCases)
+    .innerJoin(patients, eq(triageCases.patientId, patients.id))
+    .where(gt(triageCases.id, 0))
+    .orderBy(triageCases.queueRank, desc(triageCases.createdAt))
+    .limit(limit);
 }

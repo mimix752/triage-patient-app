@@ -12,10 +12,21 @@
 - [x] Ajouter des données de démonstration et des garde-fous d’interface pour visualiser les cas patients.
 - [x] Écrire les tests Vitest pour valider le moteur de triage et les routes critiques.
 - [x] Documenter les limites médicales, la sécurité des données et les hypothèses de conformité du prototype.
-- [ ] Vérifier l’état du projet, finaliser puis créer le checkpoint de livraison.
+- [x] Vérifier l’état du projet, finaliser puis créer le checkpoint de livraison.
 - [x] Raffiner la hiérarchie visuelle de l’interface clinique pour un rendu plus premium et lisible.
 - [x] Améliorer le responsive mobile et tablette des zones héro, formulaires et cartes KPI.
 - [x] Optimiser le cadrage, les espacements et la largeur utile du contenu principal.
 - [x] Renforcer l’ergonomie du parcours de création de dossier et du tableau de bord patient.
 - [x] Corriger le débordement visuel du hero, réduire l’impact typographique du grand titre et rééquilibrer les cartes KPI sur desktop.
 - [x] Réduire encore la dominance visuelle du titre du hero et rééquilibrer la composition desktop entre texte principal, sous-texte et cartes KPI.
+- [ ] Concevoir la version 2 avec deux parcours distincts : personnel soignant avec accès complet et patient avec accès formulaire seul via QR code.
+- [ ] Ajouter un contrôle d’accès différencié pour réserver l’interface complète aux appareils ou comptes du personnel.
+- [ ] Créer une page patient dédiée accessible par QR code pour l’auto-saisie des informations et symptômes.
+- [ ] Étendre le backend avec une IA plus avancée pour l’extraction d’identité, la structuration clinique et l’aide au triage.
+- [ ] Ajouter une priorisation manuelle immédiate P1 décidée par le personnel sans passage obligatoire par l’analyse IA.
+- [ ] Intégrer dans l’analyse de triage la charge actuelle, le nombre de patients, de médecins et d’infirmiers disponibles.
+- [ ] Repenser l’interface en deux pages principales : espace personnel et formulaire patient.
+- [ ] Tester, documenter et livrer la version 2 réaliste du prototype.
+- [ ] Corriger l’erreur de requête `patientFormLinks` qui empêche le chargement de la page personnel après l’introduction du parcours QR patient version 2.
+- [ ] Corriger la composition desktop du hero personnel version 2 pour réduire la dominance du titre et mieux équilibrer le bloc éditorial avec les KPI.
+- [ ] Compacter davantage le hero desktop, réduire la hauteur perçue des cartes KPI et améliorer l’alignement global du bloc éditorial personnel version 2.

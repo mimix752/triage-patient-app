@@ -10,9 +10,14 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/staff" component={Home} />
+      <Route path="/staff/nouveau-dossier" component={Home} />
+      <Route path="/staff/tableau-de-bord" component={Home} />
+      <Route path="/staff/protocoles" component={Home} />
       <Route path="/nouveau-dossier" component={Home} />
       <Route path="/tableau-de-bord" component={Home} />
       <Route path="/protocoles" component={Home} />
+      <Route path="/patient/:token" component={Home} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
