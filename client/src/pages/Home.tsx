@@ -623,8 +623,8 @@ function StaffPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 pt-6 lg:grid-cols-[minmax(0,0.96fr)_minmax(280px,340px)] lg:items-start lg:gap-5 lg:pt-0 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] xl:gap-6">
-            <div className="min-w-0 max-w-[40rem]">
+          <div className="grid gap-4 pt-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(272px,328px)] lg:items-start lg:gap-5 lg:pt-0 xl:grid-cols-[minmax(0,1.04fr)_minmax(292px,344px)] xl:gap-6">
+            <div className="min-w-0 max-w-[42rem]">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">Version 2 · IA + capacitaire</Badge>
                 <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">2 parcours séparés</Badge>
@@ -635,40 +635,40 @@ function StaffPage() {
               <p className="mt-3 max-w-[38rem] text-sm leading-7 text-slate-600 sm:text-[15px] sm:leading-7">
                 L’analyse croise signaux cliniques, identité, transcription vocale et pression opérationnelle en fonction de la file active et des soignants disponibles.
               </p>
-              <div className="mt-4 grid gap-2.5 md:grid-cols-3 lg:max-w-[36rem]">
-                <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)]">
+              <div className="mt-4 grid gap-2.5 md:grid-cols-3 lg:max-w-[39rem]">
+                <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)] lg:min-h-[9.5rem]">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Personnel</p>
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Accès complet et sécurisé à toute l’application</p>
                 </div>
-                <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)]">
+                <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)] lg:min-h-[9.5rem]">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Patient</p>
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Formulaire public uniquement via QR code</p>
                 </div>
-                <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)]">
+                <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)] lg:min-h-[9.5rem]">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">P1 manuel</p>
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Admission critique sans attendre l’IA ni les symptômes complets</p>
                 </div>
               </div>
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Button className="h-12 rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800" onClick={() => setLocation("/staff/nouveau-dossier")}>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:max-w-[39rem] xl:grid-cols-3">
+                <Button className="h-12 justify-center rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800" onClick={() => setLocation("/staff/nouveau-dossier")}>
                   Créer un dossier personnel
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button variant="outline" className="h-12 rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white" onClick={() => setLocation("/staff/tableau-de-bord")}>
+                <Button variant="outline" className="h-12 justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white" onClick={() => setLocation("/staff/tableau-de-bord")}>
                   Ouvrir le tableau de bord
                 </Button>
-                <Button variant="outline" className="h-12 rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white" onClick={logout}>
+                <Button variant="outline" className="h-12 justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white xl:col-span-1 sm:col-span-2" onClick={logout}>
                   Déconnexion
                 </Button>
               </div>
             </div>
 
-            <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:max-w-[22.5rem] lg:justify-self-end lg:pt-1 xl:max-w-[24rem]">
+            <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
               {statCards.map((card) => {
                 const value = dashboard?.summary?.[card.key] ?? 0;
                 return (
                     <Card key={card.key} className="rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur">
-                    <CardContent className="flex h-full flex-col p-4 sm:p-5">
+                    <CardContent className="flex h-full min-h-[10.6rem] flex-col p-4 sm:p-5">
                       <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
                         <card.icon className="h-4.5 w-4.5" />
                       </div>
