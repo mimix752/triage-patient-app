@@ -157,6 +157,18 @@ async function uploadDataUrl(dataUrl: string, prefix: string) {
   return { url, mimeType: decoded.mimeType };
 }
 
+export function shouldIgnoreLiveTranscriptionError(error: {
+  code: string;
+  details?: string;
+}) {
+  return (
+    error.code === "TRANSCRIPTION_FAILED" &&
+    (error.details?.includes("Invalid file format") ||
+      error.details?.includes("audio/transcriptions") ||
+      error.details?.includes("400 Bad Request"))
+  );
+}
+
 async function extractIdentityFromImage(imageUrl: string) {
   const response = await invokeLLM({
     messages: [
@@ -751,6 +763,16 @@ export const appRouter = router({
         });
 
         if ("error" in transcription) {
+          const normalizedCurrentTranscript = normalizeFreeText(input.currentTranscript) || "";
+          if (shouldIgnoreLiveTranscriptionError(transcription)) {
+            return {
+              transcriptChunk: "",
+              mergedTranscript: normalizedCurrentTranscript,
+              detectedLanguage: input.preferredLanguage,
+              identityDraft: extractIdentityFromTranscript(normalizedCurrentTranscript),
+            };
+          }
+
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: transcription.error,

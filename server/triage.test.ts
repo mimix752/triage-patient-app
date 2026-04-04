@@ -13,6 +13,7 @@ import {
   computeTriageAssessment,
   createManualP1Assessment,
 } from "./triage";
+import { shouldIgnoreLiveTranscriptionError } from "./routers";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -209,6 +210,26 @@ describe("resource-aware triage", () => {
     expect(result.queueRank).toBe(1);
     expect(result.targetWaitMinutes).toBe(0);
     expect(result.aiSummary?.summary).toContain("priorité vitale");
+  });
+});
+
+describe("live transcription fallback", () => {
+  it("ignore les fragments live invalides renvoyés par le service de transcription", () => {
+    expect(
+      shouldIgnoreLiveTranscriptionError({
+        code: "TRANSCRIPTION_FAILED",
+        details: "400 Bad Request: Invalid file format. Supported formats: ['webm']",
+      }),
+    ).toBe(true);
+  });
+
+  it("ne masque pas les erreurs de transcription réellement bloquantes", () => {
+    expect(
+      shouldIgnoreLiveTranscriptionError({
+        code: "SERVICE_ERROR",
+        details: "Voice transcription service authentication is missing",
+      }),
+    ).toBe(false);
   });
 });
 

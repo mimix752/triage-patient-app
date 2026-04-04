@@ -480,6 +480,10 @@ function StaffPage() {
   }
 
   async function transcribeAudioBlob(blob: Blob) {
+    if (blob.size < 4096) {
+      return;
+    }
+
     const file = new File([blob], `triage-live-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
     const dataUrl = await readFileAsDataUrl(file);
     setVoiceAudioDataUrl(dataUrl);
@@ -503,9 +507,13 @@ function StaffPage() {
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
       recorder.ondataavailable = async (event) => {
-        if (event.data.size > 0 && !transcribeVoiceLiveMutation.isPending) {
+        if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          await transcribeAudioBlob(event.data);
+        }
+
+        if (!transcribeVoiceLiveMutation.isPending) {
+          const combinedBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+          await transcribeAudioBlob(combinedBlob);
         }
       };
       recorder.onstop = () => {
@@ -1316,6 +1324,10 @@ function PatientPage({ token }: { token: string }) {
   }
 
   async function transcribePatientAudioBlob(blob: Blob) {
+    if (blob.size < 4096) {
+      return;
+    }
+
     const file = new File([blob], `patient-live-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
     const dataUrl = await readFileAsDataUrl(file);
     setVoiceAudioDataUrl(dataUrl);
@@ -1339,9 +1351,13 @@ function PatientPage({ token }: { token: string }) {
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
       recorder.ondataavailable = async (event) => {
-        if (event.data.size > 0 && !transcribePatientVoiceLiveMutation.isPending) {
+        if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          await transcribePatientAudioBlob(event.data);
+        }
+
+        if (!transcribePatientVoiceLiveMutation.isPending) {
+          const combinedBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+          await transcribePatientAudioBlob(combinedBlob);
         }
       };
       recorder.onstop = () => {
