@@ -92,6 +92,7 @@ const commonCaseSchema = z.object({
   identity: identitySchema,
   identityImageDataUrl: z.string().optional(),
   voiceAudioDataUrl: z.string().optional(),
+  voiceTranscriptText: z.string().default("").optional(),
   preferredLanguage: z.string().default("fr"),
   mobileNumber: z.string().default(""),
   notes: z.string().default(""),
@@ -121,6 +122,22 @@ const manualP1CaseSchema = z.object({
   manualReason: z.string().min(3),
   chiefComplaint: z.string().default("Admission critique immédiate"),
   symptomSummary: z.string().default("Prise en charge manuelle P1 décidée par le personnel soignant avant collecte clinique complète."),
+});
+
+const liveTranscriptionSchema = z.object({
+  audioDataUrl: z.string().min(20),
+  currentTranscript: z.string().default(""),
+  preferredLanguage: z.string().default("fr"),
+});
+
+const cameraFrameSchema = z.object({
+  token: z.string().min(8).optional(),
+  terminalLabel: z.string().min(2).default("Caméra patient"),
+  preferredLanguage: z.string().default("fr"),
+  imageDataUrl: z.string().min(20),
+  identity: identitySchema.partial().default({}),
+  mobileNumber: z.string().default(""),
+  notes: z.string().default(""),
 });
 
 type StaffingRuntimeInput = {
@@ -270,13 +287,18 @@ async function buildIdentityAndTranscript(params: {
   identity: z.infer<typeof identitySchema>;
   identityImageDataUrl?: string;
   voiceAudioDataUrl?: string;
+  voiceTranscriptText?: string;
   preferredLanguage: string;
   ownerPrefix: string;
 }) {
   let identitySourceUrl = "";
-  let voiceTranscript = "";
+  let voiceTranscript = normalizeFreeText(params.voiceTranscriptText ?? "") || "";
   let ocrDraft: z.infer<typeof identitySchema> | undefined;
   let vocalDraft: z.infer<typeof identitySchema> | undefined;
+
+  if (params.intakeMethod === "vocal" && voiceTranscript) {
+    vocalDraft = extractIdentityFromTranscript(voiceTranscript);
+  }
 
   if (params.identityImageDataUrl) {
     const uploadedImage = await uploadDataUrl(params.identityImageDataUrl, `${params.ownerPrefix}/identity`);
@@ -302,9 +324,9 @@ async function buildIdentityAndTranscript(params: {
       });
     }
 
-    voiceTranscript = transcription.text;
+    voiceTranscript = normalizeFreeText([voiceTranscript, transcription.text].filter(Boolean).join(" ")) || voiceTranscript;
     if (params.intakeMethod === "vocal") {
-      vocalDraft = extractIdentityFromTranscript(transcription.text);
+      vocalDraft = extractIdentityFromTranscript(voiceTranscript);
     }
   }
 
@@ -358,6 +380,136 @@ async function notifyIfSevere(params: {
   return { severity, title, content, delivered: Boolean(delivered) };
 }
 
+const cameraAlertCooldown = new Map<string, number>();
+
+function isCameraAlertCoolingDown(key: string, cooldownMs = 120_000) {
+  const now = Date.now();
+  const lastDetectionAt = cameraAlertCooldown.get(key) ?? 0;
+  if (now - lastDetectionAt < cooldownMs) {
+    return true;
+  }
+  cameraAlertCooldown.set(key, now);
+  return false;
+}
+
+type CriticalVisualAnalysis = {
+  critical: boolean;
+  visiblePersonPresent: boolean;
+  fainting: boolean;
+  severeHemorrhage: boolean;
+  abnormalPosture: boolean;
+  respiratoryDistress: boolean;
+  confidence: number;
+  summary: string;
+  recommendedPriority: "urgence_vitale" | "urgence" | "semi_urgence" | "non_urgent";
+  recommendedAction: string;
+};
+
+async function analyzeCriticalVisualSignals(params: {
+  imageDataUrl: string;
+  preferredLanguage: string;
+}) {
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          "Vous êtes un assistant de surveillance clinique visuelle pour un service d’urgences. Vous ne posez jamais de diagnostic. Vous repérez uniquement des signes visuels potentiellement critiques visibles sur l’image et répondez en JSON strict.",
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text:
+              `Analyse cette image de caméra patient. Langue préférée: ${params.preferredLanguage}. Détecte uniquement des signes visuels immédiatement observables parmi: évanouissement/perte de tonus, hémorragie sévère visible, posture anormale inquiétante, détresse respiratoire apparente. Si l’image n’est pas exploitable ou qu’aucune personne n’est visible, indique-le prudemment.`,
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: params.imageDataUrl,
+              detail: "low",
+            },
+          },
+        ],
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "critical_visual_triage",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            critical: { type: "boolean" },
+            visiblePersonPresent: { type: "boolean" },
+            fainting: { type: "boolean" },
+            severeHemorrhage: { type: "boolean" },
+            abnormalPosture: { type: "boolean" },
+            respiratoryDistress: { type: "boolean" },
+            confidence: { type: "integer", minimum: 0, maximum: 100 },
+            summary: { type: "string" },
+            recommendedPriority: {
+              type: "string",
+              enum: ["urgence_vitale", "urgence", "semi_urgence", "non_urgent"],
+            },
+            recommendedAction: { type: "string" },
+          },
+          required: [
+            "critical",
+            "visiblePersonPresent",
+            "fainting",
+            "severeHemorrhage",
+            "abnormalPosture",
+            "respiratoryDistress",
+            "confidence",
+            "summary",
+            "recommendedPriority",
+            "recommendedAction",
+          ],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  const content = response.choices[0]?.message.content;
+  const text = typeof content === "string" ? content : JSON.stringify(content ?? {});
+  return JSON.parse(text) as CriticalVisualAnalysis;
+}
+
+function buildAssessmentFromVisualAnalysis(analysis: CriticalVisualAnalysis): z.infer<typeof assessmentSchema> {
+  const criticalComplaint = [
+    analysis.fainting ? "malaise ou perte de tonus" : "",
+    analysis.severeHemorrhage ? "hémorragie visible" : "",
+    analysis.abnormalPosture ? "posture anormale" : "",
+    analysis.respiratoryDistress ? "détresse respiratoire" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return {
+    chiefComplaint: criticalComplaint || "Alerte visuelle critique détectée par caméra",
+    symptomSummary: analysis.summary || "Détection visuelle automatisée en attente de validation humaine.",
+    painLevel: analysis.severeHemorrhage || analysis.respiratoryDistress ? 9 : 7,
+    canWalk: !(analysis.fainting || analysis.abnormalPosture),
+    hasBleeding: analysis.severeHemorrhage,
+    hasSevereBleeding: analysis.severeHemorrhage,
+    hasBreathingDifficulty: analysis.respiratoryDistress,
+    hasChestPain: false,
+    hasNeurologicalDeficit: analysis.abnormalPosture,
+    hasLossOfConsciousness: analysis.fainting,
+    hasHighFever: false,
+    hasTrauma: analysis.abnormalPosture || analysis.severeHemorrhage,
+    isPregnant: false,
+    oxygenSaturation: null,
+    heartRate: null,
+    respiratoryRate: analysis.respiratoryDistress ? 32 : null,
+    systolicBloodPressure: null,
+  };
+}
+
 async function persistCase(params: {
   createdByUserId: number | null;
   formLinkId?: number | null;
@@ -375,6 +527,7 @@ async function persistCase(params: {
     identity: params.payload.identity,
     identityImageDataUrl: params.payload.identityImageDataUrl,
     voiceAudioDataUrl: params.payload.voiceAudioDataUrl,
+    voiceTranscriptText: params.payload.voiceTranscriptText,
     preferredLanguage: params.payload.preferredLanguage,
     ownerPrefix: params.ownerPrefix,
   });
@@ -586,6 +739,163 @@ export const appRouter = router({
       };
     }),
     guidedQuestions: publicProcedure.query(() => guidedQuestions),
+    transcribeVoiceLive: publicProcedure
+      .input(liveTranscriptionSchema)
+      .mutation(async ({ input }) => {
+        const uploadedAudio = await uploadDataUrl(input.audioDataUrl, `triage/live-transcription/${Date.now()}`);
+        const transcription = await transcribeAudio({
+          audioUrl: uploadedAudio.url,
+          language: input.preferredLanguage,
+          prompt:
+            "Transcrire fidèlement une saisie vocale de triage aux urgences. Préserver les noms, prénoms, dates, numéros d’identité et symptômes s’ils sont dictés.",
+        });
+
+        if ("error" in transcription) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: transcription.error,
+          });
+        }
+
+        const transcriptChunk = normalizeFreeText(transcription.text) || "";
+        const mergedTranscript = normalizeFreeText(
+          [input.currentTranscript, transcriptChunk].filter(Boolean).join(" "),
+        ) || transcriptChunk;
+
+        return {
+          transcriptChunk,
+          mergedTranscript,
+          detectedLanguage: transcription.language || input.preferredLanguage,
+          identityDraft: extractIdentityFromTranscript(mergedTranscript),
+        };
+      }),
+    analyzeCameraFrame: publicProcedure
+      .input(cameraFrameSchema)
+      .mutation(async ({ input }) => {
+        const uploadedFrame = await uploadDataUrl(input.imageDataUrl, `triage/camera-frame/${Date.now()}`);
+        const analysis = await analyzeCriticalVisualSignals({
+          imageDataUrl: uploadedFrame.url,
+          preferredLanguage: input.preferredLanguage,
+        });
+
+        if (!analysis.visiblePersonPresent) {
+          return {
+            detected: false,
+            critical: false,
+            caseCreated: false,
+            alertSuppressed: false,
+            recommendedOrientation: null,
+            analysis,
+          };
+        }
+
+        const alertKey = [
+          input.token || "public",
+          input.terminalLabel,
+          analysis.fainting ? "fainting" : "",
+          analysis.severeHemorrhage ? "hemorrhage" : "",
+          analysis.abnormalPosture ? "posture" : "",
+          analysis.respiratoryDistress ? "respiratory" : "",
+        ]
+          .filter(Boolean)
+          .join(":");
+
+        if (!analysis.critical || isCameraAlertCoolingDown(alertKey)) {
+          return {
+            detected: true,
+            critical: analysis.critical,
+            caseCreated: false,
+            alertSuppressed: analysis.critical,
+            recommendedOrientation: analysis.critical ? "salle de réanimation" : null,
+            analysis,
+          };
+        }
+
+        const link = input.token ? await getPatientFormLinkByToken(input.token) : null;
+        if (input.token && !link) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Le lien patient associé à la caméra n’est plus disponible.",
+          });
+        }
+        if (link) {
+          await touchPatientFormLinkUsage(link.id);
+        }
+
+        const staffing = await getLatestStaffingSnapshot();
+        const caseResult = await persistCase({
+          createdByUserId: null,
+          formLinkId: link?.id ?? null,
+          intakeSource: "patient_qr",
+          payload: {
+            intakeMethod: "manuel",
+            identity: {
+              firstName: input.identity.firstName ?? "",
+              lastName: input.identity.lastName ?? "",
+              dateOfBirth: input.identity.dateOfBirth ?? "",
+              socialSecurityNumber: input.identity.socialSecurityNumber ?? "",
+            },
+            preferredLanguage: input.preferredLanguage,
+            mobileNumber: input.mobileNumber,
+            notes:
+              normalizeFreeText(
+                [
+                  input.notes,
+                  `Détection caméra ${input.terminalLabel}. ${analysis.summary}`,
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+              ) || "",
+            assessment: buildAssessmentFromVisualAnalysis(analysis),
+          },
+          staffing,
+          aiInsights: {
+            suspectedPriority: "urgence_vitale",
+            clinicalSignals: [
+              analysis.fainting ? "évanouissement détecté" : "",
+              analysis.severeHemorrhage ? "hémorragie sévère visible" : "",
+              analysis.abnormalPosture ? "posture anormale" : "",
+              analysis.respiratoryDistress ? "détresse respiratoire" : "",
+            ].filter(Boolean),
+            riskFactors: ["détection visuelle automatisée", "validation clinique immédiate requise"],
+            suggestedQuestions: [
+              "Confirmer l’état de conscience.",
+              "Vérifier la perméabilité des voies aériennes et la respiration.",
+              "Contrôler immédiatement tout saignement extériorisé.",
+            ],
+            summary: analysis.summary,
+          },
+          manualPriority: "urgence_vitale",
+          manualReason: `Alerte critique caméra · ${input.terminalLabel} · orientation immédiate en salle de réanimation.`,
+          skipAiAnalysis: true,
+          ownerPrefix: `triage/camera/${input.token ?? "public"}`,
+        });
+
+        await createTriageEventRecord({
+          triageCaseId: caseResult.triageCase.id,
+          eventType: "note",
+          title: "Détection critique caméra",
+          description: `Alerte visuelle automatisée depuis ${input.terminalLabel} avec orientation recommandée en salle de réanimation.`,
+          eventPayload: JSON.stringify({
+            terminalLabel: input.terminalLabel,
+            frameUrl: uploadedFrame.url,
+            analysis,
+            recommendedOrientation: "salle_de_reanimation",
+          }),
+        });
+
+        return {
+          detected: true,
+          critical: true,
+          caseCreated: true,
+          alertSuppressed: false,
+          recommendedOrientation: "salle de réanimation",
+          analysis,
+          triageCaseId: caseResult.triageCase.id,
+          priority: caseResult.assessment.priority,
+          notificationPreview: caseResult.notificationPreview,
+        };
+      }),
     createFormLink: protectedProcedure
       .input(
         z.object({

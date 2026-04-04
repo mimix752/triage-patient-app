@@ -6,7 +6,12 @@ import {
   mergeIdentityDrafts,
   normalizeDate,
 } from "./patientIdentity";
-import { computeTriageAssessment } from "./triage";
+import {
+  computeQueuePressureScore,
+  computeResourceAwareTriageAssessment,
+  computeTriageAssessment,
+  createManualP1Assessment,
+} from "./triage";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -111,6 +116,98 @@ describe("computeTriageAssessment", () => {
     expect(result.priority).toBe("non_urgent");
     expect(result.queueRank).toBe(4);
     expect(result.severe).toBe(false);
+  });
+});
+
+describe("resource-aware triage", () => {
+  it("augmente la priorité d’un cas non urgent lorsque la pression opérationnelle devient critique", () => {
+    const result = computeResourceAwareTriageAssessment(
+      {
+        chiefComplaint: "Demande de renouvellement",
+        symptomSummary: "Aucun signe aigu immédiat.",
+        painLevel: 1,
+        canWalk: true,
+        hasBleeding: false,
+        hasSevereBleeding: false,
+        hasBreathingDifficulty: false,
+        hasChestPain: false,
+        hasNeurologicalDeficit: false,
+        hasLossOfConsciousness: false,
+        hasHighFever: false,
+        hasTrauma: false,
+        isPregnant: false,
+        oxygenSaturation: 99,
+        heartRate: 72,
+        respiratoryRate: 15,
+        systolicBloodPressure: 121,
+      },
+      {
+        staffing: {
+          doctorsOnDuty: 2,
+          nursesOnDuty: 3,
+          availableDoctors: 0,
+          availableNurses: 1,
+          waitingPatients: 18,
+          activeCriticalPatients: 4,
+          notes: "Tension extrême du service",
+        },
+      },
+    );
+
+    expect(computeQueuePressureScore({
+      doctorsOnDuty: 2,
+      nursesOnDuty: 3,
+      availableDoctors: 0,
+      availableNurses: 1,
+      waitingPatients: 18,
+      activeCriticalPatients: 4,
+      notes: "Tension extrême du service",
+    })).toBeGreaterThanOrEqual(16);
+    expect(result.priority).toBe("semi_urgence");
+    expect(result.queueRank).toBeLessThanOrEqual(3);
+    expect(result.rationale.join(" ")).toContain("charge opérationnelle du service");
+  });
+
+  it("préserve un override manuel P1 avec justification clinique", () => {
+    const result = computeResourceAwareTriageAssessment(
+      {
+        chiefComplaint: "Douleur abdominale",
+        symptomSummary: "Patient pâle, aggravation rapide observée à l’accueil.",
+        painLevel: 6,
+        canWalk: false,
+        hasBleeding: false,
+        hasSevereBleeding: false,
+        hasBreathingDifficulty: false,
+        hasChestPain: false,
+        hasNeurologicalDeficit: false,
+        hasLossOfConsciousness: false,
+        hasHighFever: false,
+        hasTrauma: false,
+        isPregnant: false,
+        oxygenSaturation: 97,
+        heartRate: 108,
+        respiratoryRate: 20,
+        systolicBloodPressure: 110,
+      },
+      {
+        manualPriority: "urgence_vitale",
+        manualReason: "Décision infirmière immédiate avant bilan complet.",
+      },
+    );
+
+    expect(result.priority).toBe("urgence_vitale");
+    expect(result.entryMode).toBe("manual_p1");
+    expect(result.manualPriorityOverride).toBe(true);
+    expect(result.manualPriorityReason).toContain("Décision infirmière immédiate");
+  });
+
+  it("crée une évaluation P1 minimale cohérente pour une alerte critique immédiate", () => {
+    const result = createManualP1Assessment("Effondrement observé en zone d’attente.");
+
+    expect(result.priority).toBe("urgence_vitale");
+    expect(result.queueRank).toBe(1);
+    expect(result.targetWaitMinutes).toBe(0);
+    expect(result.aiSummary?.summary).toContain("priorité vitale");
   });
 });
 

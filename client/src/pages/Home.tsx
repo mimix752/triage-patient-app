@@ -339,8 +339,12 @@ function StaffPage() {
   const [identityFileName, setIdentityFileName] = useState("");
   const [identityImageDataUrl, setIdentityImageDataUrl] = useState("");
   const [voiceAudioDataUrl, setVoiceAudioDataUrl] = useState("");
+  const [voiceTranscriptText, setVoiceTranscriptText] = useState("");
   const [voiceFileName, setVoiceFileName] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [isLiveTranscribing, setIsLiveTranscribing] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraAlertSummary, setCameraAlertSummary] = useState("");
   const [staffing, setStaffing] = useState<StaffingState>(initialStaffingState);
   const [qrLabel, setQrLabel] = useState("QR Hall principal");
   const [generatedQrLink, setGeneratedQrLink] = useState("");
@@ -348,6 +352,9 @@ function StaffPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraIntervalRef = useRef<number | null>(null);
 
   const utils = trpc.useUtils();
   const bootstrapQuery = trpc.triage.staffBootstrap.useQuery(undefined, {
@@ -386,12 +393,42 @@ function StaffPage() {
       setIdentityFileName("");
       setIdentityImageDataUrl("");
       setVoiceAudioDataUrl("");
+      setVoiceTranscriptText("");
       setVoiceFileName("");
+      setCameraAlertSummary("");
       await utils.triage.staffBootstrap.invalidate();
       setLocation("/staff/tableau-de-bord");
     },
     onError: (error: unknown) =>
       toast.error(error instanceof Error ? error.message : "Une erreur est survenue."),
+  });
+
+  const transcribeVoiceLiveMutation = trpc.triage.transcribeVoiceLive.useMutation({
+    onSuccess: (result) => {
+      setVoiceTranscriptText(result.mergedTranscript);
+      setPreferredLanguage(result.detectedLanguage || preferredLanguage);
+      setIdentity((current) => ({
+        firstName: current.firstName || result.identityDraft.firstName || "",
+        lastName: current.lastName || result.identityDraft.lastName || "",
+        dateOfBirth: current.dateOfBirth || result.identityDraft.dateOfBirth || "",
+        socialSecurityNumber: current.socialSecurityNumber || result.identityDraft.socialSecurityNumber || "",
+      }));
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Transcription impossible."),
+  });
+
+  const analyzeCameraFrameMutation = trpc.triage.analyzeCameraFrame.useMutation({
+    onSuccess: async (result) => {
+      if (!result.detected) return;
+      setCameraAlertSummary(result.analysis.summary || "Analyse vidéo en cours de supervision.");
+      if (result.caseCreated) {
+        toast.error("Alerte critique caméra détectée. Dossier prioritaire créé.");
+        await utils.triage.staffBootstrap.invalidate();
+      }
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Analyse caméra impossible."),
   });
 
   const createManualP1Mutation = trpc.triage.createManualP1Case.useMutation({
@@ -407,6 +444,10 @@ function StaffPage() {
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (cameraIntervalRef.current) {
+        window.clearInterval(cameraIntervalRef.current);
+      }
     };
   }, []);
 
@@ -438,17 +479,20 @@ function StaffPage() {
     }
   }
 
-  async function handleAudioFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  async function transcribeAudioBlob(blob: Blob) {
+    const file = new File([blob], `triage-live-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+    const dataUrl = await readFileAsDataUrl(file);
+    setVoiceAudioDataUrl(dataUrl);
+    setVoiceFileName(file.name);
+    setIsLiveTranscribing(true);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setVoiceAudioDataUrl(dataUrl);
-      setVoiceFileName(file.name);
-      toast.success("Fichier audio prêt pour la transcription.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Lecture du fichier audio impossible.");
+      await transcribeVoiceLiveMutation.mutateAsync({
+        audioDataUrl: dataUrl,
+        currentTranscript: voiceTranscriptText,
+        preferredLanguage,
+      });
+    } finally {
+      setIsLiveTranscribing(false);
     }
   }
 
@@ -458,24 +502,20 @@ function StaffPage() {
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+      recorder.ondataavailable = async (event) => {
+        if (event.data.size > 0 && !transcribeVoiceLiveMutation.isPending) {
           audioChunksRef.current.push(event.data);
+          await transcribeAudioBlob(event.data);
         }
       };
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        const file = new File([blob], `triage-voice-${Date.now()}.webm`, { type: blob.type });
-        const dataUrl = await readFileAsDataUrl(file);
-        setVoiceAudioDataUrl(dataUrl);
-        setVoiceFileName(file.name);
+      recorder.onstop = () => {
         streamRef.current?.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       };
-      recorder.start();
+      recorder.start(3500);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
-      toast.success("Enregistrement vocal démarré.");
+      toast.success("Transcription vocale temps réel démarrée.");
     } catch {
       toast.error("Impossible d’accéder au microphone sur cet appareil.");
     }
@@ -484,7 +524,60 @@ function StaffPage() {
   function stopVoiceRecording() {
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
-    toast.success("Enregistrement arrêté. Le fichier est prêt.");
+    toast.success("Micro arrêté. La transcription reste disponible pour validation.");
+  }
+
+  async function startCameraMonitoring() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      cameraStreamRef.current = stream;
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        await cameraVideoRef.current.play().catch(() => undefined);
+      }
+      setCameraEnabled(true);
+      if (cameraIntervalRef.current) {
+        window.clearInterval(cameraIntervalRef.current);
+      }
+      cameraIntervalRef.current = window.setInterval(async () => {
+        const video = cameraVideoRef.current;
+        if (!video || video.readyState < 2 || analyzeCameraFrameMutation.isPending) {
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+        await analyzeCameraFrameMutation.mutateAsync({
+          terminalLabel: qrLabel || "Caméra zone patient",
+          preferredLanguage,
+          imageDataUrl: dataUrl,
+          identity,
+          mobileNumber,
+          notes,
+        });
+      }, 12000);
+      toast.success("Supervision caméra clinique activée.");
+    } catch {
+      toast.error("Impossible d’accéder à la caméra de cet appareil.");
+    }
+  }
+
+  function stopCameraMonitoring() {
+    if (cameraIntervalRef.current) {
+      window.clearInterval(cameraIntervalRef.current);
+      cameraIntervalRef.current = null;
+    }
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraEnabled(false);
+    toast.success("Supervision caméra arrêtée.");
   }
 
   function updateIdentity<K extends keyof IdentityState>(key: K, value: IdentityState[K]) {
@@ -510,8 +603,8 @@ function StaffPage() {
       return;
     }
 
-    if (intakeMethod === "vocal" && !voiceAudioDataUrl) {
-      toast.error("Veuillez enregistrer ou téléverser un audio.");
+    if (intakeMethod === "vocal" && !voiceTranscriptText.trim()) {
+      toast.error("Veuillez lancer la transcription vocale temps réel avant validation.");
       return;
     }
 
@@ -525,6 +618,7 @@ function StaffPage() {
       identity,
       identityImageDataUrl: identityImageDataUrl || undefined,
       voiceAudioDataUrl: voiceAudioDataUrl || undefined,
+      voiceTranscriptText: voiceTranscriptText || undefined,
       preferredLanguage,
       mobileNumber,
       notes,
@@ -755,18 +849,20 @@ function StaffPage() {
                               <AudioLines className="h-5 w-5" />
                             </div>
                             <div>
-                              <h3 className="text-base font-semibold text-slate-900">Transcription vocale</h3>
-                              <p className="mt-1 text-sm leading-6 text-slate-500">Capture de la voix du patient ou d’un agent d’accueil pour extraire l’identité et le contexte clinique.</p>
+                              <h3 className="text-base font-semibold text-slate-900">Transcription vocale temps réel</h3>
+                              <p className="mt-1 text-sm leading-6 text-slate-500">Le microphone envoie des segments courts pour mettre à jour le transcript progressivement et préremplir l’identité du patient.</p>
                             </div>
                           </div>
-                          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                            <Input type="file" accept="audio/*" onChange={handleAudioFile} className="rounded-2xl bg-white" />
+                          <div className="mt-5 flex flex-wrap gap-3">
                             <Button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
                               {isRecording ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                              {isRecording ? "Arrêter" : "Enregistrer"}
+                              {isRecording ? "Stopper le live" : "Démarrer le live"}
                             </Button>
+                            <div className="rounded-2xl border border-white/70 bg-white px-4 py-2 text-sm text-slate-600">
+                              {isLiveTranscribing ? "Transcription en cours…" : voiceTranscriptText ? "Transcript prêt à être vérifié." : "Aucun transcript pour l’instant."}
+                            </div>
                           </div>
-                          {voiceFileName ? <p className="mt-3 text-sm text-slate-500">Audio prêt : {voiceFileName}</p> : null}
+                          <Textarea value={voiceTranscriptText} onChange={(event) => setVoiceTranscriptText(event.target.value)} className="mt-4 min-h-[140px] rounded-2xl bg-white" placeholder="La transcription temps réel apparaîtra ici." />
                         </div>
                         <Alert className="rounded-[1.6rem] border-amber-200 bg-white">
                           <BrainCircuit className="h-4 w-4" />
@@ -776,6 +872,25 @@ function StaffPage() {
                       </div>
                     </TabsContent>
                   </Tabs>
+
+                  <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50/70 p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold text-slate-900">Supervision caméra critique</h3>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">Une analyse visuelle périodique repère les signaux très critiques et peut créer un dossier prioritaire P1 automatiquement.</p>
+                      </div>
+                      <Button type="button" onClick={cameraEnabled ? stopCameraMonitoring : startCameraMonitoring} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
+                        {cameraEnabled ? "Arrêter la caméra" : "Activer la caméra"}
+                      </Button>
+                    </div>
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                      <video ref={cameraVideoRef} muted playsInline className="aspect-video w-full rounded-[1.4rem] border border-slate-200 bg-slate-950 object-cover" />
+                      <div className="rounded-[1.4rem] border border-white/80 bg-white p-4 text-sm text-slate-600">
+                        <p className="font-medium text-slate-900">Dernière synthèse caméra</p>
+                        <p className="mt-2 leading-6">{cameraAlertSummary || "Aucune alerte critique détectée pour le moment."}</p>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="space-y-2">
@@ -1118,11 +1233,18 @@ function PatientPage({ token }: { token: string }) {
   const [identityFileName, setIdentityFileName] = useState("");
   const [identityImageDataUrl, setIdentityImageDataUrl] = useState("");
   const [voiceAudioDataUrl, setVoiceAudioDataUrl] = useState("");
+  const [voiceTranscriptText, setVoiceTranscriptText] = useState("");
   const [voiceFileName, setVoiceFileName] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [isLiveTranscribing, setIsLiveTranscribing] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraAlertSummary, setCameraAlertSummary] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraIntervalRef = useRef<number | null>(null);
 
   const bootstrapQuery = trpc.triage.patientFormBootstrap.useQuery({ token }, { staleTime: 10_000 });
   const submitMutation = trpc.triage.submitPatientCase.useMutation({
@@ -1135,15 +1257,48 @@ function PatientPage({ token }: { token: string }) {
       setIdentityFileName("");
       setIdentityImageDataUrl("");
       setVoiceAudioDataUrl("");
+      setVoiceTranscriptText("");
       setVoiceFileName("");
+      setCameraAlertSummary("");
     },
     onError: (error: unknown) =>
       toast.error(error instanceof Error ? error.message : "Une erreur est survenue."),
   });
 
+  const transcribePatientVoiceLiveMutation = trpc.triage.transcribeVoiceLive.useMutation({
+    onSuccess: (result) => {
+      setVoiceTranscriptText(result.mergedTranscript);
+      setPreferredLanguage(result.detectedLanguage || preferredLanguage);
+      setIdentity((current) => ({
+        firstName: current.firstName || result.identityDraft.firstName || "",
+        lastName: current.lastName || result.identityDraft.lastName || "",
+        dateOfBirth: current.dateOfBirth || result.identityDraft.dateOfBirth || "",
+        socialSecurityNumber: current.socialSecurityNumber || result.identityDraft.socialSecurityNumber || "",
+      }));
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Transcription impossible."),
+  });
+
+  const analyzePatientCameraFrameMutation = trpc.triage.analyzeCameraFrame.useMutation({
+    onSuccess: (result) => {
+      if (!result.detected) return;
+      setCameraAlertSummary(result.analysis.summary || "Analyse caméra en cours.");
+      if (result.caseCreated) {
+        toast.error("Alerte critique détectée. L’équipe soignante a été prévenue.");
+      }
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Analyse caméra impossible."),
+  });
+
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (cameraIntervalRef.current) {
+        window.clearInterval(cameraIntervalRef.current);
+      }
     };
   }, []);
 
@@ -1160,16 +1315,20 @@ function PatientPage({ token }: { token: string }) {
     }
   }
 
-  async function handleAudioFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  async function transcribePatientAudioBlob(blob: Blob) {
+    const file = new File([blob], `patient-live-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+    const dataUrl = await readFileAsDataUrl(file);
+    setVoiceAudioDataUrl(dataUrl);
+    setVoiceFileName(file.name);
+    setIsLiveTranscribing(true);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setVoiceAudioDataUrl(dataUrl);
-      setVoiceFileName(file.name);
-      toast.success("Audio prêt pour transcription.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Lecture du fichier audio impossible.");
+      await transcribePatientVoiceLiveMutation.mutateAsync({
+        audioDataUrl: dataUrl,
+        currentTranscript: voiceTranscriptText,
+        preferredLanguage,
+      });
+    } finally {
+      setIsLiveTranscribing(false);
     }
   }
 
@@ -1179,21 +1338,20 @@ function PatientPage({ token }: { token: string }) {
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      recorder.ondataavailable = async (event) => {
+        if (event.data.size > 0 && !transcribePatientVoiceLiveMutation.isPending) {
+          audioChunksRef.current.push(event.data);
+          await transcribePatientAudioBlob(event.data);
+        }
       };
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        const file = new File([blob], `patient-voice-${Date.now()}.webm`, { type: blob.type });
-        const dataUrl = await readFileAsDataUrl(file);
-        setVoiceAudioDataUrl(dataUrl);
-        setVoiceFileName(file.name);
+      recorder.onstop = () => {
         streamRef.current?.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       };
-      recorder.start();
+      recorder.start(3500);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
+      toast.success("Micro patient activé.");
     } catch {
       toast.error("Impossible d’accéder au microphone.");
     }
@@ -1202,6 +1360,56 @@ function PatientPage({ token }: { token: string }) {
   function stopVoiceRecording() {
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
+  }
+
+  async function startPatientCameraMonitoring() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      cameraStreamRef.current = stream;
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        await cameraVideoRef.current.play().catch(() => undefined);
+      }
+      setCameraEnabled(true);
+      if (cameraIntervalRef.current) {
+        window.clearInterval(cameraIntervalRef.current);
+      }
+      cameraIntervalRef.current = window.setInterval(async () => {
+        const video = cameraVideoRef.current;
+        if (!video || video.readyState < 2 || analyzePatientCameraFrameMutation.isPending) return;
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+        await analyzePatientCameraFrameMutation.mutateAsync({
+          terminalLabel: bootstrapQuery.data?.link?.label || "Borne patient",
+          preferredLanguage,
+          imageDataUrl: dataUrl,
+          identity,
+          mobileNumber,
+          notes,
+        });
+      }, 12000);
+      toast.success("Caméra patient activée.");
+    } catch {
+      toast.error("Impossible d’activer la caméra.");
+    }
+  }
+
+  function stopPatientCameraMonitoring() {
+    if (cameraIntervalRef.current) {
+      window.clearInterval(cameraIntervalRef.current);
+      cameraIntervalRef.current = null;
+    }
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraEnabled(false);
   }
 
   function updateIdentity<K extends keyof IdentityState>(key: K, value: IdentityState[K]) {
@@ -1223,8 +1431,8 @@ function PatientPage({ token }: { token: string }) {
       return;
     }
 
-    if (intakeMethod === "vocal" && !voiceAudioDataUrl) {
-      toast.error("Veuillez enregistrer ou importer un audio.");
+    if (intakeMethod === "vocal" && !voiceTranscriptText.trim()) {
+      toast.error("Veuillez lancer la transcription vocale temps réel.");
       return;
     }
 
@@ -1239,6 +1447,7 @@ function PatientPage({ token }: { token: string }) {
       identity,
       identityImageDataUrl: identityImageDataUrl || undefined,
       voiceAudioDataUrl: voiceAudioDataUrl || undefined,
+      voiceTranscriptText: voiceTranscriptText || undefined,
       preferredLanguage,
       mobileNumber,
       notes,
@@ -1309,16 +1518,39 @@ function PatientPage({ token }: { token: string }) {
               </TabsContent>
 
               <TabsContent value="vocal" className="mt-5">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-                  <Input type="file" accept="audio/*" onChange={handleAudioFile} className="rounded-2xl bg-white" />
-                  <Button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
-                    {isRecording ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                    {isRecording ? "Arrêter" : "Enregistrer"}
-                  </Button>
+                <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50/70 p-5">
+                  <div className="flex flex-wrap gap-3">
+                    <Button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
+                      {isRecording ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                      {isRecording ? "Arrêter le live" : "Parler maintenant"}
+                    </Button>
+                    <div className="rounded-2xl border border-white/70 bg-white px-4 py-2 text-sm text-slate-600">
+                      {isLiveTranscribing ? "Transcription en cours…" : voiceTranscriptText ? "Transcription disponible." : "Le texte apparaîtra ici automatiquement."}
+                    </div>
+                  </div>
+                  <Textarea value={voiceTranscriptText} onChange={(event) => setVoiceTranscriptText(event.target.value)} className="mt-4 min-h-[140px] rounded-2xl bg-white" placeholder="Parlez clairement, votre texte sera retranscrit au fil de la saisie." />
                 </div>
-                {voiceFileName ? <p className="mt-3 text-sm text-slate-500">Audio prêt : {voiceFileName}</p> : null}
               </TabsContent>
             </Tabs>
+
+            <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50/70 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">Surveillance caméra de sécurité clinique</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">Une analyse visuelle périodique peut signaler un effondrement, une hémorragie visible ou une détresse respiratoire et prévenir immédiatement l’équipe.</p>
+                </div>
+                <Button type="button" onClick={cameraEnabled ? stopPatientCameraMonitoring : startPatientCameraMonitoring} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
+                  {cameraEnabled ? "Arrêter la caméra" : "Activer la caméra"}
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+                <video ref={cameraVideoRef} muted playsInline className="aspect-video w-full rounded-[1.4rem] border border-slate-200 bg-slate-950 object-cover" />
+                <div className="rounded-[1.4rem] border border-white/80 bg-white p-4 text-sm text-slate-600">
+                  <p className="font-medium text-slate-900">Dernière synthèse</p>
+                  <p className="mt-2 leading-6">{cameraAlertSummary || "Aucune situation critique détectée pour l’instant."}</p>
+                </div>
+              </div>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2"><Label>Prénom</Label><Input value={identity.firstName} onChange={(event) => updateIdentity("firstName", event.target.value)} className="rounded-2xl bg-white" /></div>

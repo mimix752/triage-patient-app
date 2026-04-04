@@ -19,13 +19,13 @@
 - [x] Renforcer l’ergonomie du parcours de création de dossier et du tableau de bord patient.
 - [x] Corriger le débordement visuel du hero, réduire l’impact typographique du grand titre et rééquilibrer les cartes KPI sur desktop.
 - [x] Réduire encore la dominance visuelle du titre du hero et rééquilibrer la composition desktop entre texte principal, sous-texte et cartes KPI.
-- [ ] Concevoir la version 2 avec deux parcours distincts : personnel soignant avec accès complet et patient avec accès formulaire seul via QR code.
+- [x] Concevoir la version 2 avec deux parcours distincts : personnel soignant avec accès complet et patient avec accès formulaire seul via QR code.
 - [ ] Ajouter un contrôle d’accès différencié pour réserver l’interface complète aux appareils ou comptes du personnel.
-- [ ] Créer une page patient dédiée accessible par QR code pour l’auto-saisie des informations et symptômes.
+- [x] Créer une page patient dédiée accessible par QR code pour l’auto-saisie des informations et symptômes.
 - [ ] Étendre le backend avec une IA plus avancée pour l’extraction d’identité, la structuration clinique et l’aide au triage.
-- [ ] Ajouter une priorisation manuelle immédiate P1 décidée par le personnel sans passage obligatoire par l’analyse IA.
-- [ ] Intégrer dans l’analyse de triage la charge actuelle, le nombre de patients, de médecins et d’infirmiers disponibles.
-- [ ] Repenser l’interface en deux pages principales : espace personnel et formulaire patient.
+- [x] Ajouter une priorisation manuelle immédiate P1 décidée par le personnel sans passage obligatoire par l’analyse IA.
+- [x] Intégrer dans l’analyse de triage la charge actuelle, le nombre de patients, de médecins et d’infirmiers disponibles.
+- [x] Repenser l’interface en deux pages principales : espace personnel et formulaire patient.
 - [ ] Tester, documenter et livrer la version 2 réaliste du prototype.
 - [x] Corriger l’erreur de requête `patientFormLinks` qui empêche le chargement de la page personnel après l’introduction du parcours QR patient version 2.
 - [x] Corriger la composition desktop du hero personnel version 2 pour réduire la dominance du titre et mieux équilibrer le bloc éditorial avec les KPI.
@@ -33,3 +33,10 @@
 - [x] Réduire encore la hauteur visuelle du hero desktop, alléger la colonne KPI et resserrer les espacements verticaux de la page personnel version 2.
 - [x] Ajuster l’équilibre horizontal du hero personnel version 2 pour mieux répartir le bloc texte, les cartes intermédiaires et la colonne KPI sur desktop.
 - [x] Corriger le rognage du bouton principal dans la rangée d’actions du hero personnel version 2 et sécuriser l’alignement horizontal des CTA sur desktop.
+- [x] Remplacer l’ajout de fichier audio par une transcription vocale en temps réel côté patient.
+- [x] Ajouter un module caméra / vision par ordinateur pour détecter évanouissement, hémorragie sévère visible, posture anormale et détresse respiratoire.
+- [x] Déclencher une alerte staff immédiate, orienter en salle de réanimation et créer automatiquement un dossier lors d’une détection critique caméra.
+- [x] Intégrer la supervision caméra et les événements de détection critique dans les interfaces personnel et patient.
+- [ ] Mettre en place des rôles différenciés médecin, infirmier et agent d’accueil avec permissions adaptées.
+- [ ] Générer des QR codes dynamiques par borne ou service pour contextualiser le formulaire patient.
+- [ ] Ajouter un journal d’audit clinique retraçant recommandations IA, overrides manuels P1 et alertes critiques caméra.
