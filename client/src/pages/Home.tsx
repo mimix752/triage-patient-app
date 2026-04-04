@@ -649,15 +649,15 @@ function StaffPage() {
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Admission critique sans attendre l’IA ni les symptômes complets</p>
                 </div>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:max-w-[39rem] xl:grid-cols-3">
-                <Button className="h-12 justify-center rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800" onClick={() => setLocation("/staff/nouveau-dossier")}>
+              <div className="mt-5 flex flex-col gap-3 sm:max-w-[39rem] sm:flex-row sm:flex-wrap sm:items-center">
+                <Button className="h-12 w-full justify-center rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800 sm:w-auto" onClick={() => setLocation("/staff/nouveau-dossier")}>
                   Créer un dossier personnel
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button variant="outline" className="h-12 justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white" onClick={() => setLocation("/staff/tableau-de-bord")}>
+                <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={() => setLocation("/staff/tableau-de-bord")}>
                   Ouvrir le tableau de bord
                 </Button>
-                <Button variant="outline" className="h-12 justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white xl:col-span-1 sm:col-span-2" onClick={logout}>
+                <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={logout}>
                   Déconnexion
                 </Button>
               </div>

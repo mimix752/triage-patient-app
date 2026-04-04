@@ -32,3 +32,4 @@
 - [x] Compacter davantage le hero desktop, réduire la hauteur perçue des cartes KPI et améliorer l’alignement global du bloc éditorial personnel version 2.
 - [x] Réduire encore la hauteur visuelle du hero desktop, alléger la colonne KPI et resserrer les espacements verticaux de la page personnel version 2.
 - [x] Ajuster l’équilibre horizontal du hero personnel version 2 pour mieux répartir le bloc texte, les cartes intermédiaires et la colonne KPI sur desktop.
+- [x] Corriger le rognage du bouton principal dans la rangée d’actions du hero personnel version 2 et sécuriser l’alignement horizontal des CTA sur desktop.
