@@ -1,0 +1,151 @@
+import { describe, expect, it } from "vitest";
+import {
+  extractIdentityFromTranscript,
+  hashSensitiveValue,
+  maskSocialSecurityNumber,
+  mergeIdentityDrafts,
+  normalizeDate,
+} from "./patientIdentity";
+import { computeTriageAssessment } from "./triage";
+
+describe("computeTriageAssessment", () => {
+  it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
+    const result = computeTriageAssessment({
+      chiefComplaint: "Malaise sévère",
+      symptomSummary: "Perte de connaissance et détresse respiratoire.",
+      painLevel: 3,
+      canWalk: false,
+      hasBleeding: false,
+      hasSevereBleeding: false,
+      hasBreathingDifficulty: true,
+      hasChestPain: false,
+      hasNeurologicalDeficit: true,
+      hasLossOfConsciousness: true,
+      hasHighFever: false,
+      hasTrauma: false,
+      isPregnant: false,
+      oxygenSaturation: 88,
+      heartRate: 135,
+      respiratoryRate: 31,
+      systolicBloodPressure: 85,
+    });
+
+    expect(result.priority).toBe("urgence_vitale");
+    expect(result.targetWaitMinutes).toBe(0);
+    expect(result.severe).toBe(true);
+    expect(result.rationale.join(" ")).toContain("Altération majeure");
+  });
+
+  it("classe un patient douloureux thoracique en urgence", () => {
+    const result = computeTriageAssessment({
+      chiefComplaint: "Douleur thoracique",
+      symptomSummary: "Oppression thoracique depuis 30 minutes.",
+      painLevel: 8,
+      canWalk: true,
+      hasBleeding: false,
+      hasSevereBleeding: false,
+      hasBreathingDifficulty: false,
+      hasChestPain: true,
+      hasNeurologicalDeficit: false,
+      hasLossOfConsciousness: false,
+      hasHighFever: false,
+      hasTrauma: false,
+      isPregnant: false,
+      oxygenSaturation: 98,
+      heartRate: 92,
+      respiratoryRate: 18,
+      systolicBloodPressure: 123,
+    });
+
+    expect(result.priority).toBe("urgence");
+    expect(result.targetWaitMinutes).toBe(15);
+    expect(result.protocolReference).toContain("ESI niveau 2");
+  });
+
+  it("classe une suspicion de fracture en semi-urgence", () => {
+    const result = computeTriageAssessment({
+      chiefComplaint: "Fracture du poignet",
+      symptomSummary: "Douleur et gonflement après chute.",
+      painLevel: 5,
+      canWalk: true,
+      hasBleeding: false,
+      hasSevereBleeding: false,
+      hasBreathingDifficulty: false,
+      hasChestPain: false,
+      hasNeurologicalDeficit: false,
+      hasLossOfConsciousness: false,
+      hasHighFever: false,
+      hasTrauma: true,
+      isPregnant: false,
+      oxygenSaturation: 99,
+      heartRate: 81,
+      respiratoryRate: 16,
+      systolicBloodPressure: 118,
+    });
+
+    expect(result.priority).toBe("semi_urgence");
+    expect(result.targetWaitMinutes).toBe(60);
+  });
+
+  it("classe un cas simple en non urgent", () => {
+    const result = computeTriageAssessment({
+      chiefComplaint: "Renouvellement d’ordonnance",
+      symptomSummary: "Demande administrative sans symptôme aigu.",
+      painLevel: 0,
+      canWalk: true,
+      hasBleeding: false,
+      hasSevereBleeding: false,
+      hasBreathingDifficulty: false,
+      hasChestPain: false,
+      hasNeurologicalDeficit: false,
+      hasLossOfConsciousness: false,
+      hasHighFever: false,
+      hasTrauma: false,
+      isPregnant: false,
+      oxygenSaturation: 99,
+      heartRate: 72,
+      respiratoryRate: 14,
+      systolicBloodPressure: 120,
+    });
+
+    expect(result.priority).toBe("non_urgent");
+    expect(result.queueRank).toBe(4);
+    expect(result.severe).toBe(false);
+  });
+});
+
+describe("patientIdentity helpers", () => {
+  it("normalise une date au format ISO", () => {
+    expect(normalizeDate("04/11/1986")).toBe("1986-11-04");
+    expect(normalizeDate("1986-11-04")).toBe("1986-11-04");
+  });
+
+  it("masque le numéro de sécurité sociale et le hache de manière déterministe", () => {
+    expect(maskSocialSecurityNumber("1234567890123")).toBe("•••••••••0123");
+    expect(hashSensitiveValue("1234567890123")).toBe(hashSensitiveValue("1234567890123"));
+  });
+
+  it("extrait les données dictées dans une transcription vocale", () => {
+    const result = extractIdentityFromTranscript(
+      "Je m'appelle Sara Benali, date de naissance 14-02-1992, numéro de sécurité sociale 2840212345678",
+    );
+
+    expect(result.firstName).toContain("Sara");
+    expect(result.dateOfBirth).toBe("1992-02-14");
+    expect(result.socialSecurityNumber).toBe("2840212345678");
+  });
+
+  it("fusionne plusieurs brouillons d’identité en conservant les champs disponibles", () => {
+    const merged = mergeIdentityDrafts(
+      { firstName: "Nadia", lastName: "", dateOfBirth: "", socialSecurityNumber: "" },
+      { firstName: "", lastName: "Alaoui", dateOfBirth: "1985-09-01", socialSecurityNumber: "AB123456" },
+    );
+
+    expect(merged).toEqual({
+      firstName: "Nadia",
+      lastName: "Alaoui",
+      dateOfBirth: "1985-09-01",
+      socialSecurityNumber: "AB123456",
+    });
+  });
+});

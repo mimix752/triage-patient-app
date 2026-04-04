@@ -19,23 +19,34 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import {
+  Activity,
+  ClipboardPlus,
+  LayoutDashboard,
+  LogOut,
+  PanelLeft,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
-import { Button } from "./ui/button";
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Vue d’ensemble", path: "/" },
+  { icon: ClipboardPlus, label: "Nouveau dossier", path: "/nouveau-dossier" },
+  { icon: Activity, label: "Tableau de bord", path: "/tableau-de-bord" },
+  { icon: ShieldAlert, label: "Protocoles", path: "/protocoles" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
-const DEFAULT_WIDTH = 280;
-const MIN_WIDTH = 200;
-const MAX_WIDTH = 480;
+const DEFAULT_WIDTH = 300;
+const MIN_WIDTH = 220;
+const MAX_WIDTH = 420;
 
 export default function DashboardLayout({
   children,
@@ -53,29 +64,31 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
-            </p>
-          </div>
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(28,124,84,0.12),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(239,246,255,0.92)_100%)] px-4">
+        <div className="w-full max-w-lg rounded-[2rem] border border-white/60 bg-white/85 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+          <Badge className="mb-4 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 hover:bg-emerald-50">
+            Triage médical intelligent
+          </Badge>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+            Accès réservé au personnel soignant
+          </h1>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            Connectez-vous pour accéder aux parcours d’accueil patient, à la priorisation clinique
+            assistée et au tableau de bord temps réel des urgences.
+          </p>
           <Button
             onClick={() => {
               window.location.href = getLoginUrl();
             }}
             size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
+            className="mt-8 h-12 w-full rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800"
           >
-            Sign in
+            Ouvrir l’espace clinique
           </Button>
         </div>
       </div>
@@ -90,9 +103,7 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
+      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent>
     </SidebarProvider>
   );
 }
@@ -102,10 +113,7 @@ type DashboardLayoutContentProps = {
   setSidebarWidth: (width: number) => void;
 };
 
-function DashboardLayoutContent({
-  children,
-  setSidebarWidth,
-}: DashboardLayoutContentProps) {
+function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
@@ -154,86 +162,103 @@ function DashboardLayoutContent({
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar
-          collapsible="icon"
-          className="border-r-0"
-          disableTransition={isResizing}
-        >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
+        <Sidebar collapsible="icon" className="border-r-0 bg-transparent" disableTransition={isResizing}>
+          <SidebarHeader className="h-auto justify-center border-b border-sidebar-border/70 px-3 py-4">
+            <div className="flex w-full items-start gap-3 px-1 transition-all">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl hover:bg-sidebar-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Basculer la navigation"
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
+                <div className="min-w-0 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100">
+                      Urgences
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full border-white/60 bg-white/70 text-[11px]">
+                      Sécurisé
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">
+                      Triage Patient Intelligent
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-sidebar-foreground/65">
+                      Parcours d’admission, priorisation clinique et supervision en mobilité.
+                    </p>
+                  </div>
                 </div>
               ) : null}
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                      />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+          <SidebarContent className="gap-0 px-2 py-4">
+            <div className="rounded-[1.6rem] border border-white/60 bg-white/70 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+              <SidebarMenu className="gap-1 px-1 py-1">
+                {menuItems.map(item => {
+                  const isActive = location === item.path;
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={item.label}
+                        className="h-11 rounded-2xl px-3 text-sm font-medium transition-all"
+                      >
+                        <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-sidebar-foreground/70"}`} />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </div>
+
+            {!isCollapsed ? (
+              <div className="mt-4 rounded-[1.6rem] border border-emerald-200/70 bg-[linear-gradient(180deg,rgba(236,253,245,0.92),rgba(240,249,255,0.90))] p-4 shadow-[0_20px_50px_rgba(16,185,129,0.10)]">
+                <div className="flex items-center gap-2 text-emerald-700">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Assistant de priorisation</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-emerald-900/75">
+                  Le moteur de triage applique une logique simplifiée inspirée des protocoles ESI et
+                  exige toujours une validation médicale finale.
+                </p>
+              </div>
+            ) : null}
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="border-t border-sidebar-border/70 p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
+                <button className="flex w-full items-center gap-3 rounded-2xl border border-white/60 bg-white/80 px-2 py-2 text-left shadow-sm transition-colors hover:bg-white group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="h-10 w-10 shrink-0 border border-slate-200">
+                    <AvatarFallback className="bg-slate-900 text-xs font-semibold text-white">
+                      {user?.name?.charAt(0).toUpperCase() || "M"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "-"}
+                  <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                    <p className="truncate text-sm font-medium leading-none text-slate-900">
+                      {user?.name || "Personnel médical"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user?.email || "-"}
-                    </p>
+                    <p className="mt-1.5 truncate text-xs text-slate-500">{user?.email || "Session protégée"}</p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
+              <DropdownMenuContent align="end" className="w-52 rounded-2xl">
+                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  <span>Se déconnecter</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
         <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/20 ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
@@ -242,22 +267,21 @@ function DashboardLayoutContent({
         />
       </div>
 
-      <SidebarInset>
+      <SidebarInset className="bg-transparent">
         {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+          <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/60 bg-background/90 px-3 backdrop-blur-xl">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
+              <SidebarTrigger className="h-9 w-9 rounded-xl bg-white/80 shadow-sm" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold tracking-tight text-foreground">
+                  {activeMenuItem?.label ?? "Triage"}
+                </span>
+                <span className="text-[11px] text-muted-foreground">Mobilité clinique sécurisée</span>
               </div>
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="min-h-screen flex-1 p-3 sm:p-5 lg:p-7">{children}</main>
       </SidebarInset>
     </>
   );

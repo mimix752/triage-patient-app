@@ -1,0 +1,21 @@
+# Project TODO
+
+- [x] Définir le modèle de données sécurisé pour les patients, consultations, événements de triage et notifications.
+- [x] Ajouter les tables et préparer la migration SQL pour la persistance des dossiers patients et de l’historique clinique.
+- [x] Créer les procédures serveur pour l’inscription patient, la collecte des symptômes, le calcul de priorité et le tableau de bord.
+- [x] Implémenter le parcours d’enregistrement patient avec trois modes de saisie : OCR carte d’identité, saisie manuelle et saisie vocale avec transcription automatique.
+- [x] Concevoir le questionnaire guidé de symptômes et motif de consultation avec évaluation de gravité.
+- [x] Développer un moteur de triage automatique attribuant les niveaux urgence vitale, urgence, semi-urgence et non-urgent.
+- [x] Construire le tableau de bord des patients en attente avec tri par priorité, temps d’attente et statut.
+- [x] Mettre en place les notifications pour alerter le personnel médical lors de nouveaux cas urgents.
+- [x] Réaliser une interface élégante, responsive et mobile-first adaptée aux tablettes et smartphones.
+- [x] Ajouter des données de démonstration et des garde-fous d’interface pour visualiser les cas patients.
+- [x] Écrire les tests Vitest pour valider le moteur de triage et les routes critiques.
+- [x] Documenter les limites médicales, la sécurité des données et les hypothèses de conformité du prototype.
+- [ ] Vérifier l’état du projet, finaliser puis créer le checkpoint de livraison.
+- [x] Raffiner la hiérarchie visuelle de l’interface clinique pour un rendu plus premium et lisible.
+- [x] Améliorer le responsive mobile et tablette des zones héro, formulaires et cartes KPI.
+- [x] Optimiser le cadrage, les espacements et la largeur utile du contenu principal.
+- [x] Renforcer l’ergonomie du parcours de création de dossier et du tableau de bord patient.
+- [x] Corriger le débordement visuel du hero, réduire l’impact typographique du grand titre et rééquilibrer les cartes KPI sur desktop.
+- [x] Réduire encore la dominance visuelle du titre du hero et rééquilibrer la composition desktop entre texte principal, sous-texte et cartes KPI.
