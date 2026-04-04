@@ -623,7 +623,7 @@ function StaffPage() {
             </div>
           </div>
 
-          <div className="grid gap-5 pt-8 lg:grid-cols-[minmax(0,0.94fr)_minmax(300px,370px)] lg:items-start lg:gap-6 lg:pt-0 xl:grid-cols-[minmax(0,0.98fr)_minmax(320px,390px)] xl:gap-7">
+          <div className="grid gap-4 pt-6 lg:grid-cols-[minmax(0,0.96fr)_minmax(280px,340px)] lg:items-start lg:gap-5 lg:pt-0 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] xl:gap-6">
             <div className="min-w-0 max-w-[40rem]">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">Version 2 · IA + capacitaire</Badge>
@@ -635,7 +635,7 @@ function StaffPage() {
               <p className="mt-3 max-w-[38rem] text-sm leading-7 text-slate-600 sm:text-[15px] sm:leading-7">
                 L’analyse croise signaux cliniques, identité, transcription vocale et pression opérationnelle en fonction de la file active et des soignants disponibles.
               </p>
-              <div className="mt-5 grid gap-3 md:grid-cols-3 lg:max-w-[38rem]">
+              <div className="mt-4 grid gap-2.5 md:grid-cols-3 lg:max-w-[36rem]">
                 <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Personnel</p>
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Accès complet et sécurisé à toute l’application</p>
@@ -649,7 +649,7 @@ function StaffPage() {
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Admission critique sans attendre l’IA ni les symptômes complets</p>
                 </div>
               </div>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button className="h-12 rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800" onClick={() => setLocation("/staff/nouveau-dossier")}>
                   Créer un dossier personnel
                   <ChevronRight className="ml-2 h-4 w-4" />
@@ -663,17 +663,17 @@ function StaffPage() {
               </div>
             </div>
 
-            <div className="grid auto-rows-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:pt-1">
+            <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:max-w-[22.5rem] lg:justify-self-end lg:pt-1 xl:max-w-[24rem]">
               {statCards.map((card) => {
                 const value = dashboard?.summary?.[card.key] ?? 0;
                 return (
-                    <Card key={card.key} className="rounded-[1.45rem] border-white/70 bg-white/82 shadow-[0_18px_44px_rgba(15,23,42,0.06)] backdrop-blur">
-                    <CardContent className="flex h-full flex-col p-5 sm:p-6">
+                    <Card key={card.key} className="rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur">
+                    <CardContent className="flex h-full flex-col p-4 sm:p-5">
                       <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
                         <card.icon className="h-4.5 w-4.5" />
                       </div>
-                      <p className="mt-3 text-sm text-slate-500">{card.label}</p>
-                      <p className="mt-1.5 text-[2rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">
+                      <p className="mt-2.5 text-sm text-slate-500">{card.label}</p>
+                      <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
                         {value}
                         {card.suffix}
                       </p>
