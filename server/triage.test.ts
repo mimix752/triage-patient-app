@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  decodeDataUrl,
   extractIdentityFromTranscript,
   hashSensitiveValue,
   maskSocialSecurityNumber,
@@ -244,5 +245,13 @@ describe("patientIdentity helpers", () => {
       dateOfBirth: "1985-09-01",
       socialSecurityNumber: "AB123456",
     });
+  });
+
+  it("normalise un data URL audio contenant des paramètres codecs", () => {
+    const decoded = decodeDataUrl("data:audio/webm;codecs=opus;base64,QQ==");
+
+    expect(decoded.mimeType).toBe("audio/webm");
+    expect(decoded.extension).toBe("webm");
+    expect(decoded.buffer.equals(Buffer.from("A"))).toBe(true);
   });
 });

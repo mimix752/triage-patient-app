@@ -114,7 +114,8 @@ export function decodeDataUrl(dataUrl: string): DecodedDataUrl {
     throw new Error("Format de fichier invalide.");
   }
 
-  const mimeType = match[1];
+  const rawMimeType = match[1];
+  const mimeType = rawMimeType.split(";")[0].trim().toLowerCase();
   const base64 = match[2];
   const extension = MIME_EXTENSION_MAP[mimeType] ?? mimeType.split("/")[1] ?? "bin";
 

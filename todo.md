@@ -40,3 +40,4 @@
 - [ ] Mettre en place des rôles différenciés médecin, infirmier et agent d’accueil avec permissions adaptées.
 - [ ] Générer des QR codes dynamiques par borne ou service pour contextualiser le formulaire patient.
 - [ ] Ajouter un journal d’audit clinique retraçant recommandations IA, overrides manuels P1 et alertes critiques caméra.
+- [x] Corriger l’erreur "Transcription service request failed" sur la mutation de transcription vocale temps réel depuis la page d’accueil.
