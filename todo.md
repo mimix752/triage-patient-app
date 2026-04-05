@@ -58,3 +58,4 @@
 - [ ] Vérifier si le compte actuellement utilisé possède bien le rôle administrateur.
 - [x] Corriger le refus d’accès à l’espace personnel admin lorsqu’un compte connecté semble déjà avoir le rôle administrateur.
 - [x] Remplacer l’accès admin actuel par une authentification locale sur le portail avec les emails marouaidomar1@gmail.com, bellaouhammousalma@gmail.com et mariamessaber20@gmail.com, et le mot de passe partagé 1234.
+- [x] Corriger l’erreur "Maximum update depth exceeded" dans le composant AccessPortal au chargement de la page d’entrée.

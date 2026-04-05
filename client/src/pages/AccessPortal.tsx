@@ -56,10 +56,14 @@ export default function AccessPortal() {
     const savedEmail = normalizeEmail(window.sessionStorage.getItem(LOCAL_ADMIN_EMAIL_STORAGE_KEY) || "");
     const savedPassword = window.sessionStorage.getItem(LOCAL_ADMIN_PASSWORD_STORAGE_KEY) || "";
 
-    if (isAuthorizedLocalAdminCredentials({ email: savedEmail, password: savedPassword })) {
-      setLocation("/staff");
+    if (savedEmail) {
+      setAdminEmail((current) => current || savedEmail);
     }
-  }, [setLocation]);
+
+    if (savedPassword) {
+      setAdminPassword((current) => current || savedPassword);
+    }
+  }, []);
 
   async function handlePatientAccess() {
     setIsOpeningPatientSpace(true);
