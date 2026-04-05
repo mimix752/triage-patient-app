@@ -1917,6 +1917,27 @@ function PatientPage({ token }: { token: string }) {
     return `${approximatedYear}-01-01`;
   }
 
+  function buildApproxAgeFromDateOfBirth(dateOfBirth: string) {
+    const trimmedDate = dateOfBirth.trim();
+    if (!trimmedDate) {
+      return "";
+    }
+
+    const birthDate = new Date(trimmedDate);
+    if (Number.isNaN(birthDate.getTime())) {
+      return "";
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDelta = today.getMonth() - birthDate.getMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+
+    return age >= 0 && age <= 130 ? String(age) : "";
+  }
+
   function buildChiefComplaintFromText(text: string, fallback: string) {
     const firstSentence = text
       .split(/[.!?\n]/)
@@ -2121,7 +2142,7 @@ function PatientPage({ token }: { token: string }) {
       return;
     }
     if (!voiceIdentity.firstName.trim() || !voiceIdentity.lastName.trim() || !voiceIdentity.dateOfBirth.trim()) {
-      toast.error("Veuillez vérifier les champs préremplis par la voix avant l’envoi au staff.");
+      toast.error("Veuillez vérifier le prénom, le nom et l’âge préremplis par la voix avant l’envoi au staff.");
       return;
     }
 
@@ -2276,7 +2297,7 @@ function PatientPage({ token }: { token: string }) {
                       <div className="mt-4 grid gap-3">
                         <div className="space-y-2"><Label>Prénom détecté</Label><Input value={voiceIdentity.firstName} onChange={(event) => updateVoiceIdentity("firstName", event.target.value)} className="rounded-2xl bg-white" /></div>
                         <div className="space-y-2"><Label>Nom détecté</Label><Input value={voiceIdentity.lastName} onChange={(event) => updateVoiceIdentity("lastName", event.target.value)} className="rounded-2xl bg-white" /></div>
-                        <div className="space-y-2"><Label>Date de naissance détectée</Label><Input value={voiceIdentity.dateOfBirth} onChange={(event) => updateVoiceIdentity("dateOfBirth", event.target.value)} className="rounded-2xl bg-white" placeholder="YYYY-MM-DD" /></div>
+                        <div className="space-y-2"><Label>Âge détecté</Label><Input type="number" min={0} max={130} value={buildApproxAgeFromDateOfBirth(voiceIdentity.dateOfBirth)} onChange={(event) => updateVoiceIdentity("dateOfBirth", buildApproxDateOfBirthFromAge(event.target.value))} className="rounded-2xl bg-white" placeholder="Âge en années" /></div>
                         <div className="space-y-2"><Label>Numéro d’identité détecté</Label><Input value={voiceIdentity.socialSecurityNumber} onChange={(event) => updateVoiceIdentity("socialSecurityNumber", event.target.value)} className="rounded-2xl bg-white" /></div>
                       </div>
                     </div>

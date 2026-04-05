@@ -121,3 +121,4 @@
 - [x] Retirer le doublon résiduel « Accès personnel » encore visible dans la carte principale de la page d’accueil afin de ne conserver qu’un seul accès personnel à l’écran.
 - [x] Renforcer la section Caméra avec le meilleur modèle compatible pour la détection visuelle des situations d’urgence, puis revalider son comportement.
 - [x] Rétablir sur le portail d’accès un QR code patient visible et un lien public réellement exploitable, sans retour vers une URL locale.
+- [x] Remplacer dans la section Voix du parcours patient le champ de date de naissance par un champ d’âge.
