@@ -8,6 +8,7 @@ export const LOCAL_ADMIN_EMAILS = [
   "marouaidomar1@gmail.com",
   "bellaouhammousalma@gmail.com",
   "mariamessaber20@gmail.com",
+  "salma@gmail.com",
 ] as const;
 
 export const LOCAL_ADMIN_PASSWORD = "1234";

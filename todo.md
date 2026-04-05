@@ -107,3 +107,4 @@
 - [x] Simplifier la page d’authentification pour ne garder que les informations essentielles.
 - [x] Corriger dans AccessPortal.tsx les styles JSX invalides introduits par les dernières retouches visuelles.
 - [x] Fiabiliser la génération et l’affichage du lien patient pour qu’aucune vue du portail n’expose 127.0.0.1 comme URL partageable.
+- [x] Ajouter le compte personnel `salma@gmail.com` avec le mot de passe fourni pour permettre l’authentification à l’espace personnel.
