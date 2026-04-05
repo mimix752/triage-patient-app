@@ -43,6 +43,44 @@ function parseCurrentOrigin(candidate?: string | null) {
   }
 }
 
+export function preferPublicUrl(input: {
+  candidateUrl?: string | null;
+  fallbackPath?: string | null;
+  currentOrigin?: string | null;
+  referrer?: string | null;
+  ancestorOrigins?: ArrayLike<string> | Iterable<string> | null;
+}) {
+  const candidateUrl = input.candidateUrl || "";
+
+  if (candidateUrl) {
+    try {
+      const parsedCandidateUrl = new URL(candidateUrl);
+      if (!isLocalHostname(parsedCandidateUrl.hostname)) {
+        return parsedCandidateUrl.toString();
+      }
+    } catch {
+      // Ignore malformed candidate URL and rebuild below.
+    }
+  }
+
+  const fallbackPath = input.fallbackPath || "";
+  if (!fallbackPath) {
+    return "";
+  }
+
+  const publicOrigin = resolvePublicOrigin({
+    currentOrigin: input.currentOrigin,
+    referrer: input.referrer,
+    ancestorOrigins: input.ancestorOrigins,
+  });
+
+  if (!publicOrigin) {
+    return "";
+  }
+
+  return new URL(fallbackPath, publicOrigin).toString();
+}
+
 export function resolvePublicOrigin(input: {
   currentOrigin?: string | null;
   referrer?: string | null;

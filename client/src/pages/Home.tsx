@@ -889,8 +889,8 @@ function StaffPage() {
 
           </div>
 
-          <div className="grid gap-4 pt-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(272px,328px)] lg:items-start lg:gap-5 lg:pt-0 xl:grid-cols-[minmax(0,1.04fr)_minmax(292px,344px)] xl:gap-6">
-            <div className="min-w-0 max-w-[42rem]">
+          <div className="grid gap-4 pt-6 lg:grid-cols-[minmax(0,1.18fr)_360px] lg:items-start lg:gap-5 lg:pt-0">
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">Interface clinique</Badge>
                 <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Personnel et patients séparés</Badge>
@@ -915,68 +915,19 @@ function StaffPage() {
                   <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Séparer la capacité opérationnelle, la file active et les alertes du service.</p>
                 </div>
               </div>
-              <div className="mt-5 flex flex-col gap-3 sm:max-w-[39rem] sm:flex-row sm:flex-wrap sm:items-center">
-                <Button className="h-12 w-full justify-center rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800 sm:w-auto" onClick={() => setLocation("/staff/nouveau-dossier")}>
-                  Admission patient
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={() => setLocation("/staff/tableau-de-bord")}>
-                  Salle d’attente
-                </Button>
-                <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={logout} style={{backgroundColor: '#ff0000'}}>
-                  Déconnexion
-                </Button>
-              </div>
-              <div className="mt-5 grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:max-w-[42rem]">
-                {statCards.map((card) => {
-                  const value = dashboard?.summary?.[card.key] ?? 0;
-                  const isActiveCard = dashboardQuickFilter === card.filter;
-                  return (
-                    <button
-                      key={card.key}
-                      type="button"
-                      onClick={() => handleDashboardCardClick(card.filter)}
-                      className={`text-left transition-transform duration-200 ${isActiveCard ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
-                    >
-                      <Card className={`rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur transition-all ${isActiveCard ? "ring-2 ring-slate-900/10 shadow-[0_22px_46px_rgba(15,23,42,0.09)]" : "hover:shadow-[0_22px_46px_rgba(15,23,42,0.09)]"}`}>
-                        <CardContent className="flex h-full min-h-[11.2rem] flex-col p-4 sm:p-5">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
-                              <card.icon className="h-4.5 w-4.5" />
-                            </div>
-                            <Badge variant="outline" className="rounded-full border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] text-slate-500">
-                              {isActiveCard ? "Filtre actif" : "Accès rapide"}
-                            </Badge>
-                          </div>
-                          <p className="mt-3 text-sm text-slate-500">{card.label}</p>
-                          <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
-                            {value}
-                            {card.suffix}
-                          </p>
-                          <p className="mt-2 text-xs leading-5 text-slate-500">{card.helper}</p>
-                          <div className="mt-auto pt-4 text-sm font-medium text-slate-900">
-                            {card.cta} <ChevronRight className="ml-1 inline h-4 w-4" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
-
-            <div className="space-y-3 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
-              <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)]" style={{marginTop: '22px'}}>
-                <CardContent className="space-y-3 p-4 sm:p-5">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement. Touchez une carte de suivi pour filtrer instantanément la file active.</p>
+            <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)] lg:mt-9">
+              <CardContent className="flex h-full min-h-[15.5rem] flex-col p-4 sm:p-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement. Touchez une carte de suivi pour filtrer instantanément la file active.</p>
+                </div>
+                <div className="mt-auto grid gap-2 pt-4">
+                  <div className="rounded-2xl bg-slate-50 p-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Non traités</p>
+                    <p className="mt-1 text-xl font-semibold text-slate-950">{pendingTreatmentCount}</p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Non traités</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-950">{pendingTreatmentCount}</p>
-                    </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <div className="rounded-2xl bg-slate-50 p-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-400">En traitement</p>
                       <p className="mt-1 text-xl font-semibold text-slate-950">{inTreatmentCount}</p>
@@ -986,9 +937,57 @@ function StaffPage() {
                       <p className="mt-1 text-xl font-semibold text-slate-950">{treatedCount}</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button className="h-12 w-full justify-center rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800 sm:w-auto" onClick={() => setLocation("/staff/nouveau-dossier")}>
+              Admission patient
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={() => setLocation("/staff/tableau-de-bord")}>
+              Salle d’attente
+            </Button>
+            <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={logout} style={{backgroundColor: '#ff0000'}}>
+              Déconnexion
+            </Button>
+          </div>
+          <div className="mt-5 grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+            {statCards.map((card) => {
+              const value = dashboard?.summary?.[card.key] ?? 0;
+              const isActiveCard = dashboardQuickFilter === card.filter;
+              return (
+                <button
+                  key={card.key}
+                  type="button"
+                  onClick={() => handleDashboardCardClick(card.filter)}
+                  className={`text-left transition-transform duration-200 ${isActiveCard ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
+                >
+                  <Card className={`rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur transition-all ${isActiveCard ? "ring-2 ring-slate-900/10 shadow-[0_22px_46px_rgba(15,23,42,0.09)]" : "hover:shadow-[0_22px_46px_rgba(15,23,42,0.09)]"}`}>
+                    <CardContent className="flex h-full min-h-[11.2rem] flex-col p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
+                          <card.icon className="h-4.5 w-4.5" />
+                        </div>
+                        <Badge variant="outline" className="rounded-full border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] text-slate-500">
+                          {isActiveCard ? "Filtre actif" : "Accès rapide"}
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-sm text-slate-500">{card.label}</p>
+                      <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
+                        {value}
+                        {card.suffix}
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">{card.helper}</p>
+                      <div className="mt-auto pt-4 text-sm font-medium text-slate-900">
+                        {card.cta} <ChevronRight className="ml-1 inline h-4 w-4" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </button>
+              );
+            })}
           </div>
         </section>
 

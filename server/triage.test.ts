@@ -20,7 +20,7 @@ import {
   pickActivePatientEntryLink,
 } from "../shared/accessControl";
 import { countPendingTreatmentCases, isCasePendingTreatment, triageStatusLabels } from "../shared/caseStatus";
-import { resolvePublicOrigin, resolveRequestPublicOrigin } from "../shared/publicOrigin";
+import { preferPublicUrl, resolvePublicOrigin, resolveRequestPublicOrigin } from "../shared/publicOrigin";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -329,6 +329,40 @@ describe("access portal helpers", () => {
     );
 
     expect(selected?.token).toBe("always-on");
+  });
+});
+
+describe("public URL helper", () => {
+  it("conserve une URL candidate déjà publique", () => {
+    const url = preferPublicUrl({
+      candidateUrl: "https://3000-demo.manus.computer/patient/abc123",
+      fallbackPath: "/patient/abc123",
+      currentOrigin: "https://3000-demo.manus.computer",
+    });
+
+    expect(url).toBe("https://3000-demo.manus.computer/patient/abc123");
+  });
+
+  it("reconstruit une URL publique quand l’URL candidate pointe vers 127.0.0.1", () => {
+    const url = preferPublicUrl({
+      candidateUrl: "http://127.0.0.1:3000/patient/abc123",
+      fallbackPath: "/patient/abc123",
+      currentOrigin: "http://127.0.0.1:3000",
+      ancestorOrigins: ["https://3000-demo.manus.computer"],
+      referrer: "https://app.manus.im/projects/triage-patient-app",
+    });
+
+    expect(url).toBe("https://3000-demo.manus.computer/patient/abc123");
+  });
+
+  it("retourne une chaîne vide quand aucun chemin de repli n’est disponible", () => {
+    const url = preferPublicUrl({
+      candidateUrl: "http://127.0.0.1:3000/patient/abc123",
+      currentOrigin: "http://127.0.0.1:3000",
+      referrer: "https://app.manus.im/projects/triage-patient-app",
+    });
+
+    expect(url).toBe("");
   });
 });
 

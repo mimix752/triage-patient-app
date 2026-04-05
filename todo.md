@@ -94,3 +94,11 @@
 - [x] Corriger les boutons latéraux « Accueil service », « Admission patient », « Salle d’attente » et « Protocoles » pour qu’ils ouvrent les bonnes vues cliniques.
 - [x] Corriger définitivement le lien affiché dans la carte QR du portail patient, qui montre encore une adresse locale 127.0.0.1 chez l’utilisateur.
 - [x] Vérifier et fiabiliser les boutons latéraux du tableau de bord staff pour qu’ils ouvrent toujours les bonnes vues cliniques.
+- [x] Vérifier pourquoi certains utilisateurs voient encore l’ancienne URL locale 127.0.0.1 dans la carte QR du portail malgré la correction déjà appliquée.
+- [x] Vérifier le décalage entre le mode preview affiché dans l’éditeur visuel et le rendu actuel du portail, afin d’expliquer pourquoi l’utilisateur voit encore un ancien état local dans la capture.
+- [x] Ancienne demande de déplacer un élément à côté de la carte « Non encore traités », remplacée ensuite par une consigne plus précise sur le positionnement du hero staff.
+- [x] Ancienne demande d’aligner toutes les cartes récapitulatives sur une même ligne, remplacée ensuite par la consigne finale de placer « Pilotage de flux » à droite du bloc d’accueil clinique.
+- [x] Corriger définitivement l’URL encore affichée en 127.0.0.1 dans la carte QR du portail patient, puis revérifier le rendu réellement vu par l’utilisateur.
+- [x] Déplacer la carte « Pilotage de flux » à droite du bloc d’accueil clinique dans le hero du tableau de bord staff.
+- [x] Intégrer le QR code et le lien patient public directement dans la carte « Accès clinique » du portail d’authentification.
+- [x] Retirer de la carte « Espace personnel » le bloc « Besoin d’ouvrir le parcours patient à l’accueil ? / Aller vers l’espace patient ».

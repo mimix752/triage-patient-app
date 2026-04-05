@@ -1,0 +1,4 @@
+Constats visuels récents du portail d’accès :
+- Le QR code et le lien public patient sont désormais affichés dans la carte « Accès clinique ».
+- Le bloc redondant d’accès patient a disparu de la carte « Espace personnel ».
+- La vérification du positionnement de la carte « Pilotage de flux » dans le hero staff reste à confirmer visuellement côté espace personnel.
