@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { LOCAL_ADMIN_EMAIL_STORAGE_KEY, normalizeEmail } from "../../../shared/accessControl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,12 +52,6 @@ import {
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
-
-const STAFF_EMAIL_STORAGE_KEY = "triage_staff_admin_email";
-
-function normalizeEmail(value: string) {
-  return value.trim().toLowerCase();
-}
 
 type IntakeMethod = "ocr" | "manuel" | "vocal";
 type Priority = "urgence_vitale" | "urgence" | "semi_urgence" | "non_urgent";
@@ -336,7 +331,10 @@ function StaffPage() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
   const expectedAdminEmail = useMemo(
-    () => (typeof window === "undefined" ? "" : normalizeEmail(window.sessionStorage.getItem(STAFF_EMAIL_STORAGE_KEY) || "")),
+    () =>
+      typeof window === "undefined"
+        ? ""
+        : normalizeEmail(window.sessionStorage.getItem(LOCAL_ADMIN_EMAIL_STORAGE_KEY) || ""),
     [],
   );
   const normalizedUserEmail = normalizeEmail(user?.email || "");

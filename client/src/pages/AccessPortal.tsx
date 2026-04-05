@@ -1,15 +1,19 @@
-import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { isAuthorizedStaffAccess, normalizeEmail } from "../../../shared/accessControl";
 import {
-  ArrowRight,
+  isAuthorizedLocalAdminCredentials,
+  LOCAL_ADMIN_EMAIL_STORAGE_KEY,
+  LOCAL_ADMIN_EMAILS,
+  LOCAL_ADMIN_PASSWORD_STORAGE_KEY,
+  normalizeEmail,
+} from "../../../shared/accessControl";
+import {
   Loader2,
+  LockKeyhole,
   QrCode,
   ShieldCheck,
   Stethoscope,
@@ -20,12 +24,10 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
-const STAFF_EMAIL_STORAGE_KEY = "triage_staff_admin_email";
-
 export default function AccessPortal() {
   const [, setLocation] = useLocation();
-  const { user, loading, isAuthenticated } = useAuth();
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [isOpeningPatientSpace, setIsOpeningPatientSpace] = useState(false);
 
   const patientEntryQuery = trpc.triage.publicPatientEntry.useQuery(undefined, {
@@ -35,7 +37,7 @@ export default function AccessPortal() {
 
   const pendingAdminEmail = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return normalizeEmail(window.sessionStorage.getItem(STAFF_EMAIL_STORAGE_KEY) || "");
+    return normalizeEmail(window.sessionStorage.getItem(LOCAL_ADMIN_EMAIL_STORAGE_KEY) || "");
   }, []);
 
   useEffect(() => {
@@ -47,30 +49,17 @@ export default function AccessPortal() {
   }, [pendingAdminEmail]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const expectedEmail = normalizeEmail(
-      typeof window === "undefined" ? "" : window.sessionStorage.getItem(STAFF_EMAIL_STORAGE_KEY) || "",
-    );
+    const savedEmail = normalizeEmail(window.sessionStorage.getItem(LOCAL_ADMIN_EMAIL_STORAGE_KEY) || "");
+    const savedPassword = window.sessionStorage.getItem(LOCAL_ADMIN_PASSWORD_STORAGE_KEY) || "";
 
-    if (!expectedEmail) {
-      return;
-    }
-
-    const actualEmail = normalizeEmail(user.email || "");
-    if (
-      isAuthorizedStaffAccess({
-        isAuthenticated,
-        expectedAdminEmail: expectedEmail,
-        userEmail: actualEmail,
-        userRole: user.role,
-      })
-    ) {
+    if (isAuthorizedLocalAdminCredentials({ email: savedEmail, password: savedPassword })) {
       setLocation("/staff");
     }
-  }, [isAuthenticated, setLocation, user]);
+  }, [setLocation]);
 
   async function handlePatientAccess() {
     setIsOpeningPatientSpace(true);
@@ -91,36 +80,29 @@ export default function AccessPortal() {
 
   function handleStaffAccess() {
     const normalizedEmail = normalizeEmail(adminEmail);
+    const password = adminPassword.trim();
+
     if (!normalizedEmail) {
-      toast.error("Veuillez saisir l’email administrateur avant de continuer.");
+      toast.error("Veuillez saisir un email administrateur.");
       return;
     }
 
-    window.sessionStorage.setItem(STAFF_EMAIL_STORAGE_KEY, normalizedEmail);
-
-    if (!isAuthenticated) {
-      window.location.href = getLoginUrl();
+    if (!password) {
+      toast.error("Veuillez saisir le mot de passe administrateur.");
       return;
     }
 
-    const currentEmail = normalizeEmail(user?.email || "");
-    if (
-      !isAuthorizedStaffAccess({
-        isAuthenticated,
-        expectedAdminEmail: normalizedEmail,
-        userEmail: currentEmail,
-        userRole: user?.role,
-      })
-    ) {
-      if (user?.role !== "admin") {
-        toast.error("Ce compte est connecté, mais ne dispose pas des droits administrateur.");
-        return;
-      }
-
-      toast.error("L’email saisi ne correspond pas au compte administrateur connecté.");
+    if (!isAuthorizedLocalAdminCredentials({
+      email: normalizedEmail,
+      password,
+    })) {
+      toast.error("Email administrateur ou mot de passe incorrect.");
       return;
     }
 
+    window.sessionStorage.setItem(LOCAL_ADMIN_EMAIL_STORAGE_KEY, normalizedEmail);
+    window.sessionStorage.setItem(LOCAL_ADMIN_PASSWORD_STORAGE_KEY, password);
+    toast.success("Accès administrateur autorisé.");
     setLocation("/staff");
   }
 
@@ -143,14 +125,14 @@ export default function AccessPortal() {
                   Choisissez d’abord votre espace avant d’accéder à l’application de triage.
                 </CardTitle>
                 <CardDescription className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-                  L’espace patient reste public et immédiat, sans email ni mot de passe. L’espace personnel reste réservé aux comptes administrateurs autorisés, avec vérification de l’email admin avant l’accès sécurisé.
+                  L’espace patient reste public et immédiat, sans email ni mot de passe. L’espace personnel utilise une authentification locale simple avec email autorisé et mot de passe partagé pour accéder rapidement à l’interface admin.
                 </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="grid gap-4 p-8 pt-0 sm:grid-cols-3 sm:p-10 sm:pt-0">
               <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/90 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Personnel</p>
-                <p className="mt-3 text-sm leading-6 text-slate-700">Connexion sécurisée avec rôle admin pour l’équipe soignante et la supervision clinique.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-700">Connexion locale avec email autorisé et mot de passe partagé pour l’équipe soignante.</p>
               </div>
               <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/90 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Patients</p>
@@ -158,7 +140,7 @@ export default function AccessPortal() {
               </div>
               <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/90 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Contrôle</p>
-                <p className="mt-3 text-sm leading-6 text-slate-700">Séparation claire des parcours pour limiter les erreurs d’orientation à l’entrée.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-700">Les emails autorisés sont préconfigurés et redirigent vers l’espace admin après validation.</p>
               </div>
             </CardContent>
           </Card>
@@ -172,7 +154,7 @@ export default function AccessPortal() {
                 <div>
                   <CardTitle className="text-2xl text-slate-950">Espace personnel admin</CardTitle>
                   <CardDescription className="mt-2 text-base leading-7 text-slate-600">
-                    Entrez l’email administrateur autorisé, puis continuez vers la connexion sécurisée du personnel.
+                    Saisissez un email autorisé et le mot de passe partagé pour ouvrir immédiatement l’espace admin.
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -188,12 +170,27 @@ export default function AccessPortal() {
                     className="h-12 rounded-2xl bg-white"
                   />
                 </div>
-                <Button className="h-12 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800" onClick={handleStaffAccess} disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                <div className="space-y-2">
+                  <Label htmlFor="admin-password">Mot de passe</Label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    placeholder="1234"
+                    value={adminPassword}
+                    onChange={(event) => setAdminPassword(event.target.value)}
+                    className="h-12 rounded-2xl bg-white"
+                  />
+                </div>
+                <Button className="h-12 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800" onClick={handleStaffAccess}>
+                  <ShieldCheck className="mr-2 h-4 w-4" />
                   Accéder à l’espace personnel
                 </Button>
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  <p className="font-medium text-slate-900">Emails admin autorisés</p>
+                  <p className="mt-2">{LOCAL_ADMIN_EMAILS.join(" · ")}</p>
+                </div>
                 <p className="text-sm leading-6 text-slate-500">
-                  Après authentification, l’accès est autorisé uniquement si le compte connecté possède bien le rôle <strong>admin</strong> et le même email que celui saisi ici.
+                  Le mot de passe partagé configuré pour cet accès local est vérifié côté application et transmis au backend pour ouvrir l’espace admin.
                 </p>
               </CardContent>
             </Card>
@@ -225,7 +222,7 @@ export default function AccessPortal() {
               <Card className="rounded-[1.5rem] border-white/70 bg-white/90">
                 <CardContent className="flex items-start gap-3 p-5">
                   <Stethoscope className="mt-1 h-5 w-5 text-slate-900" />
-                  <p className="text-sm leading-6 text-slate-600">Le personnel rejoint le tableau clinique complet après validation de l’identité admin.</p>
+                  <p className="text-sm leading-6 text-slate-600">Le personnel rejoint le tableau clinique complet après validation des identifiants locaux.</p>
                 </CardContent>
               </Card>
               <Card className="rounded-[1.5rem] border-white/70 bg-white/90">
@@ -236,8 +233,8 @@ export default function AccessPortal() {
               </Card>
               <Card className="rounded-[1.5rem] border-white/70 bg-white/90">
                 <CardContent className="flex items-start gap-3 p-5">
-                  <ArrowRight className="mt-1 h-5 w-5 text-sky-600" />
-                  <p className="text-sm leading-6 text-slate-600">La séparation initiale rend les parcours plus clairs dès l’ouverture de l’application.</p>
+                  <LockKeyhole className="mt-1 h-5 w-5 text-sky-600" />
+                  <p className="text-sm leading-6 text-slate-600">Le portail contrôle l’accès admin avec un mot de passe partagé et des emails autorisés.</p>
                 </CardContent>
               </Card>
             </div>

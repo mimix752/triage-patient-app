@@ -5,6 +5,11 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
+import {
+  buildLocalAdminOpenId,
+  isAuthorizedLocalAdminCredentials,
+  normalizeEmail,
+} from "../../shared/accessControl";
 import * as db from "../db";
 import { ENV } from "./env";
 import type {
@@ -17,6 +22,13 @@ import type {
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
+
+const getHeaderValue = (value: string | string[] | undefined): string => {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+  return value ?? "";
+};
 
 export type SessionPayload = {
   openId: string;
@@ -256,7 +268,45 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
+  private async authenticateLocalAdmin(req: Request): Promise<User | null> {
+    const email = normalizeEmail(getHeaderValue(req.headers["x-local-admin-email"]));
+    const password = getHeaderValue(req.headers["x-local-admin-password"]);
+
+    if (!email || !password) {
+      return null;
+    }
+
+    if (!isAuthorizedLocalAdminCredentials({ email, password })) {
+      return null;
+    }
+
+    const signedInAt = new Date();
+    const openId = buildLocalAdminOpenId(email);
+    const displayName = email.split("@")[0] || "Admin local";
+
+    await db.upsertUser({
+      openId,
+      name: displayName,
+      email,
+      loginMethod: "local_admin",
+      role: "admin",
+      lastSignedIn: signedInAt,
+    });
+
+    const user = await db.getUserByOpenId(openId);
+    if (!user) {
+      throw ForbiddenError("Local admin user not found");
+    }
+
+    return user;
+  }
+
   async authenticateRequest(req: Request): Promise<User> {
+    const localAdminUser = await this.authenticateLocalAdmin(req);
+    if (localAdminUser) {
+      return localAdminUser;
+    }
+
     // Regular authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);

@@ -47,3 +47,14 @@
 - [x] Ajouter une page d’entrée avant l’accueil avec deux boutons : espace personnel admin et espace patient.
 - [x] Permettre l’accès à l’espace patient sans email ni mot de passe avec redirection directe.
 - [x] Ajouter un accès personnel avec identification par email admin avant redirection vers l’espace souhaité.
+- [x] Préparer une configuration d’environnement locale sûre pour exécuter le projet sans exposer le fichier .env de production.
+- [x] Créer un fichier .env.example complet pour exécuter le projet localement sans exposer les secrets réels.
+- [ ] Traiter la demande d’ajout des emails marouaidomar1@gmail.com et bellaouhammousalma@gmail.com comme administrateurs.
+- [ ] Clarifier la gestion des mots de passe fournis pour des comptes admin dans le système d’authentification actuel.
+- [ ] Expliquer comment effectuer une première connexion pour créer un compte avant promotion en administrateur.
+- [ ] Expliquer clairement le fonctionnement de la promotion d’un compte en administrateur.
+- [ ] Réexpliquer de façon simple comment un nouvel utilisateur effectue sa première connexion avant promotion en administrateur.
+- [ ] Répondre clairement à la demande d’accès à l’espace personnel admin et préciser les conditions actuelles d’authentification.
+- [ ] Vérifier si le compte actuellement utilisé possède bien le rôle administrateur.
+- [x] Corriger le refus d’accès à l’espace personnel admin lorsqu’un compte connecté semble déjà avoir le rôle administrateur.
+- [x] Remplacer l’accès admin actuel par une authentification locale sur le portail avec les emails marouaidomar1@gmail.com, bellaouhammousalma@gmail.com et mariamessaber20@gmail.com, et le mot de passe partagé 1234.
