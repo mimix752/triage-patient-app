@@ -1,0 +1,4 @@
+Constats visuels du 2026-04-05 :
+- Le QR code patient et le lien direct étaient bien rendus côté portail d’authentification, mais trop bas dans la colonne droite pour être visibles sans défilement sur la première vue.
+- La correction appliquée consiste à remonter la carte "Espace patient" au-dessus de la carte "Espace personnel" et à compacter le contenu QR/lien dans une grille plus dense.
+- Objectif de vérification suivant : confirmer que le QR code et le lien public patient apparaissent désormais dans la zone visible initiale sans scroll.

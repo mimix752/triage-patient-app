@@ -79,3 +79,14 @@
 - [x] Corriger les cartes interactives du tableau de bord personnel pour qu’elles ouvrent réellement les bonnes vues ou filtres.
 - [x] Ajouter un bouton View Patient pour afficher toutes les informations saisies concernant chaque patient.
 - [x] Séparer visuellement et fonctionnellement les patients traités ou en cours de traitement de ceux qui n’ont pas encore reçu de traitement.
+- [x] Corriger les boutons du tableau de bord et du portail qui ne mènent actuellement à aucune vue utile.
+- [x] Réorganiser les cartes « Patients suivis », « Non encore traités », « Cas prioritaires » et « Attente moyenne » sous les cartes d’admission, et déplacer la carte de pilotage du flux à droite à leur place.
+- [x] Rendre le bouton « View Patient » vert et harmonisé sur toutes les lignes patient.
+- [x] Ajouter une notification temporaire à droite pour les cas urgents non encore traités, cliquable vers la liste des patients non encore traités.
+- [x] Afficher dans la page d’authentification un nouveau QR code et un lien menant toujours vers le formulaire patient, avec le message « Scanner ce QR code » ou « Accéder à ce lien ».
+- [x] Réparer tous les boutons restants du tableau de bord et du portail pour qu’ils ouvrent les bonnes vues cliniques.
+- [x] Réorganiser la colonne staff pour placer les cartes de suivi patient sous admission/déconnexion et déplacer le pilotage du flux dans la colonne de droite.
+- [x] Uniformiser tous les boutons « View Patient » en vert et conserver l’ouverture du dossier complet.
+- [x] Ajouter une alerte urgente temporaire à droite pour les cas prioritaires non encore traités, cliquable vers la liste des patients en attente.
+- [x] Afficher sur le portail d’authentification un QR code et un lien direct pointant vers le formulaire patient public.
+- [x] Remonter le QR code et le lien direct du formulaire patient sur la page d’authentification pour qu’ils soient visibles sans défilement.

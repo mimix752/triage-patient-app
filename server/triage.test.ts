@@ -317,6 +317,18 @@ describe("access portal helpers", () => {
 
     expect(selected).toBeNull();
   });
+
+  it("réutilise un lien patient actif sans expiration pour garantir un accès public stable", () => {
+    const selected = pickActivePatientEntryLink(
+      [
+        { token: "always-on", isActive: true, expiresAt: null },
+        { token: "dated", isActive: true, expiresAt: "2026-04-10T10:00:00.000Z" },
+      ],
+      new Date("2026-04-05T10:00:00.000Z").getTime(),
+    );
+
+    expect(selected?.token).toBe("always-on");
+  });
 });
 
 describe("patientIdentity helpers", () => {

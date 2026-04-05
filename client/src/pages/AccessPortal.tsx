@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -31,7 +32,6 @@ export default function AccessPortal() {
   const adminEmailRef = useRef<HTMLInputElement | null>(null);
 
   const patientEntryQuery = trpc.triage.publicPatientEntry.useQuery(undefined, {
-    enabled: false,
     staleTime: 60_000,
   });
 
@@ -65,10 +65,19 @@ export default function AccessPortal() {
     }
   }, []);
 
+  const patientPath = patientEntryQuery.data?.patientPath || "";
+  const patientUrl = useMemo(() => {
+    if (typeof window === "undefined" || !patientPath) {
+      return "";
+    }
+
+    return new URL(patientPath, window.location.origin).toString();
+  }, [patientPath]);
+
   async function handlePatientAccess() {
     setIsOpeningPatientSpace(true);
     try {
-      const result = await patientEntryQuery.refetch();
+      const result = patientEntryQuery.data?.patientPath ? { data: patientEntryQuery.data } : await patientEntryQuery.refetch();
       if (result.data?.patientPath) {
         setLocation(result.data.patientPath);
         return;
@@ -182,15 +191,70 @@ export default function AccessPortal() {
             </CardContent>
           </Card>
 
-          <div className="grid min-w-0 gap-5">
+          <div className="grid min-w-0 gap-4">
+            <Card className="rounded-[2rem] border-emerald-200/70 bg-emerald-50/80 shadow-[0_24px_70px_rgba(16,185,129,0.12)]">
+              <CardHeader className="space-y-3 p-6 sm:p-7">
+                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-600 text-white">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <CardTitle className="text-[1.85rem] text-slate-950">Espace patient</CardTitle>
+                  <CardDescription className="mt-1 text-[15px] leading-6 text-slate-700">
+                    Les patients accèdent directement au formulaire d’arrivée, sans email ni mot de passe.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 p-6 pt-0 sm:p-7 sm:pt-0">
+                <Button className="h-11 w-full rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
+                  {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
+                  Entrer dans l’espace patient
+                </Button>
+                <div className="grid gap-3 xl:grid-cols-[190px_minmax(0,1fr)]">
+                  <div className="rounded-[1.4rem] border border-emerald-200/80 bg-white/85 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Scanner ce QR code</p>
+                    <div className="mt-3 flex flex-col items-center gap-3 rounded-[1.2rem] bg-white p-3 shadow-sm">
+                      {patientUrl ? (
+                        <div className="rounded-[1rem] bg-white p-2 ring-1 ring-emerald-100">
+                          <QRCode value={patientUrl} size={132} bgColor="#FFFFFF" fgColor="#0f172a" />
+                        </div>
+                      ) : (
+                        <div className="flex h-[148px] w-[148px] items-center justify-center rounded-[1rem] border border-dashed border-emerald-200 bg-emerald-50 px-3 text-center text-sm text-emerald-700">
+                          {patientEntryQuery.isLoading || patientEntryQuery.isFetching ? "Préparation du QR code…" : "QR code indisponible pour le moment."}
+                        </div>
+                      )}
+                      <p className="text-center text-xs leading-5 text-slate-600">
+                        Scanner depuis l’accueil ou sur mobile.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-[1.4rem] border border-emerald-200/80 bg-white/85 p-4 text-sm leading-6 text-slate-700">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Accéder à ce lien</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Le lien public ouvre toujours le formulaire patient, jamais l’espace personnel.
+                    </p>
+                    {patientUrl ? (
+                      <a
+                        href={patientUrl}
+                        className="mt-3 block break-all rounded-[1rem] border border-emerald-100 bg-emerald-50 px-4 py-3 font-medium text-emerald-800 underline-offset-4 transition hover:bg-emerald-100 hover:underline"
+                      >
+                        {patientUrl}
+                      </a>
+                    ) : (
+                      <p className="mt-3 text-slate-500">Le lien direct du formulaire patient est en cours de préparation.</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="rounded-[2rem] border-slate-200/80 bg-white/92 shadow-[0_24px_70px_rgba(15,23,42,0.10)]">
               <CardHeader className="space-y-3 p-6 sm:p-7">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-950 text-white">
-                  <UserCog className="h-7 w-7" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-slate-950 text-white">
+                  <UserCog className="h-6 w-6" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl text-slate-950">Espace personnel</CardTitle>
-                  <CardDescription className="mt-1 text-[15px] leading-7 text-slate-600">
+                  <CardDescription className="mt-1 text-[15px] leading-6 text-slate-600">
                     Connectez-vous avec les accès du service pour ouvrir l’espace personnel.
                   </CardDescription>
                 </div>
@@ -205,7 +269,7 @@ export default function AccessPortal() {
                     placeholder="service@clinique.ma"
                     value={adminEmail}
                     onChange={(event) => setAdminEmail(event.target.value)}
-                    className="h-12 rounded-2xl bg-white"
+                    className="h-11 rounded-2xl bg-white"
                   />
                 </div>
                 <div className="space-y-2">
@@ -216,14 +280,14 @@ export default function AccessPortal() {
                     placeholder="1234"
                     value={adminPassword}
                     onChange={(event) => setAdminPassword(event.target.value)}
-                    className="h-12 rounded-2xl bg-white"
+                    className="h-11 rounded-2xl bg-white"
                   />
                 </div>
-                <Button className="h-12 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800" onClick={handleStaffAccess}>
+                <Button className="h-11 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800" onClick={handleStaffAccess}>
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Accéder à l’espace personnel
                 </Button>
-                <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-start gap-3 text-sm leading-6 text-slate-600">
                     <LockKeyhole className="mt-0.5 h-4.5 w-4.5 shrink-0 text-slate-500" />
                     <div>
@@ -237,29 +301,6 @@ export default function AccessPortal() {
                   <Button type="button" variant="link" className="h-auto p-0 text-slate-900" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
                     Aller vers l’espace patient
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[2rem] border-emerald-200/70 bg-emerald-50/80 shadow-[0_24px_70px_rgba(16,185,129,0.12)]">
-              <CardHeader className="space-y-4 p-7 sm:p-8">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-600 text-white">
-                  <Users className="h-7 w-7" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl text-slate-950">Espace patient</CardTitle>
-                  <CardDescription className="mt-2 text-base leading-7 text-slate-700">
-                    Les patients accèdent directement au formulaire d’arrivée, sans email ni mot de passe.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-5 p-7 pt-0 sm:p-8 sm:pt-0">
-                <Button className="h-12 w-full rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
-                  {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-                  Entrer dans l’espace patient
-                </Button>
-                <div className="rounded-[1.5rem] border border-emerald-200/80 bg-white/70 p-4 text-sm leading-6 text-slate-700">
-                  Le formulaire patient peut être ouvert immédiatement depuis ce portail ou via un QR code affiché à l’accueil.
                 </div>
               </CardContent>
             </Card>

@@ -511,6 +511,7 @@ function StaffPage() {
   const [staffSection, setStaffSection] = useState<"identity" | "clinical" | "capacity" | "priority">("identity");
   const [dashboardQuickFilter, setDashboardQuickFilter] = useState<DashboardQuickFilter>("all");
   const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
+  const [dismissedUrgentCaseId, setDismissedUrgentCaseId] = useState<number | null>(null);
 
   const dashboard = bootstrapQuery.data as StaffBootstrapPayload | undefined;
   const caseDetailQuery = trpc.triage.caseDetail.useQuery(
@@ -571,6 +572,12 @@ function StaffPage() {
     () => filteredActivePatients.filter((row) => row.status !== "en_attente"),
     [filteredActivePatients],
   );
+  const urgentUntreatedCases = useMemo(
+    () => (dashboard?.cases ?? []).filter((row) => row.status === "en_attente" && (row.priority === "urgence_vitale" || row.priority === "urgence")),
+    [dashboard?.cases],
+  );
+  const highlightedUrgentCase = urgentUntreatedCases[0] ?? null;
+  const urgentAlertVisible = Boolean(highlightedUrgentCase && dismissedUrgentCaseId !== highlightedUrgentCase.triageCaseId);
 
   const quickFilterMeta = useMemo(() => {
     switch (dashboardQuickFilter) {
@@ -584,6 +591,22 @@ function StaffPage() {
         return { title: "Tableau de bord des patients", description: "Vue temps réel des patients non encore traités, des admissions P1 et des dossiers issus du formulaire patient." };
     }
   }, [averageWaitThreshold, dashboardQuickFilter]);
+
+  useEffect(() => {
+    if (!highlightedUrgentCase) {
+      setDismissedUrgentCaseId(null);
+      return;
+    }
+
+    setDismissedUrgentCaseId(null);
+    const timeout = window.setTimeout(() => {
+      setDismissedUrgentCaseId(highlightedUrgentCase.triageCaseId);
+    }, 9000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [highlightedUrgentCase?.triageCaseId]);
 
   async function handleIdentityFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -801,14 +824,21 @@ function StaffPage() {
     setSelectedCaseId(triageCaseId);
   }
 
-  function handleDashboardCardClick(filter: DashboardQuickFilter) {
+  function openDashboardSection(filter: DashboardQuickFilter, targetId = "staff-board-section") {
     setDashboardQuickFilter(filter);
     setLocation("/staff/tableau-de-bord");
 
-    const targetId = filter === "pending" ? "staff-untreated-section" : "staff-board-section";
     window.setTimeout(() => {
       document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
+  }
+
+  function handleDashboardCardClick(filter: DashboardQuickFilter) {
+    openDashboardSection(filter, filter === "pending" ? "staff-untreated-section" : "staff-board-section");
+  }
+
+  function handleUrgentAlertClick() {
+    openDashboardSection("pending", "staff-untreated-section");
   }
 
   if (loading) {
@@ -897,10 +927,7 @@ function StaffPage() {
                   Déconnexion
                 </Button>
               </div>
-            </div>
-
-            <div className="space-y-3 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
-              <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2">
+              <div className="mt-5 grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:max-w-[42rem]">
                 {statCards.map((card) => {
                   const value = dashboard?.summary?.[card.key] ?? 0;
                   const isActiveCard = dashboardQuickFilter === card.filter;
@@ -912,7 +939,7 @@ function StaffPage() {
                       className={`text-left transition-transform duration-200 ${isActiveCard ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
                     >
                       <Card className={`rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur transition-all ${isActiveCard ? "ring-2 ring-slate-900/10 shadow-[0_22px_46px_rgba(15,23,42,0.09)]" : "hover:shadow-[0_22px_46px_rgba(15,23,42,0.09)]"}`}>
-                        <CardContent className="flex h-full min-h-[11.8rem] flex-col p-4 sm:p-5">
+                        <CardContent className="flex h-full min-h-[11.2rem] flex-col p-4 sm:p-5">
                           <div className="flex items-start justify-between gap-3">
                             <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
                               <card.icon className="h-4.5 w-4.5" />
@@ -936,13 +963,16 @@ function StaffPage() {
                   );
                 })}
               </div>
+            </div>
+
+            <div className="space-y-3 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
               <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)]">
                 <CardContent className="space-y-3 p-4 sm:p-5">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement. Touchez une carte au-dessus pour filtrer instantanément la file active.</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement. Touchez une carte de suivi pour filtrer instantanément la file active.</p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
                     <div className="rounded-2xl bg-slate-50 p-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Non traités</p>
                       <p className="mt-1 text-xl font-semibold text-slate-950">{pendingTreatmentCount}</p>
@@ -1282,7 +1312,7 @@ function StaffPage() {
                                     <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "Formulaire patient" : intakeLabels[row.intakeMethod]}</p>
                                   </div>
                                   <div className="flex flex-wrap gap-2">
-                                    <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                                    <Button type="button" size="sm" className="h-8 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500" onClick={() => openPatientDetail(row.triageCaseId)}>
                                       View Patient
                                     </Button>
                                     <Button
@@ -1363,7 +1393,7 @@ function StaffPage() {
                                     <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "Formulaire patient" : intakeLabels[row.intakeMethod]}</p>
                                   </div>
                                   <div className="flex flex-wrap gap-2">
-                                    <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                                    <Button type="button" size="sm" className="h-8 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500" onClick={() => openPatientDetail(row.triageCaseId)}>
                                       View Patient
                                     </Button>
                                     <Button
@@ -1434,6 +1464,36 @@ function StaffPage() {
           </div>
 
           <div className="space-y-5">
+            {urgentAlertVisible && highlightedUrgentCase ? (
+              <Card className="rounded-[1.9rem] border-rose-200 bg-rose-50/90 shadow-[0_25px_80px_rgba(244,63,94,0.10)]">
+                <CardContent className="space-y-4 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-sm">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Alerte urgente</p>
+                        <p className="mt-1 text-base font-semibold text-rose-950">
+                          {highlightedUrgentCase.patientFirstName} {highlightedUrgentCase.patientLastName}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-rose-800">{highlightedUrgentCase.chiefComplaint}</p>
+                      </div>
+                    </div>
+                    <Button type="button" size="sm" variant="ghost" className="rounded-xl text-rose-700 hover:bg-rose-100 hover:text-rose-800" onClick={() => setDismissedUrgentCaseId(highlightedUrgentCase.triageCaseId)}>
+                      Masquer
+                    </Button>
+                  </div>
+                  <div className="rounded-[1.25rem] border border-rose-200/80 bg-white/75 p-4 text-sm leading-6 text-rose-900">
+                    {urgentUntreatedCases.length} cas prioritaire{urgentUntreatedCases.length > 1 ? "s" : ""} non encore traité{urgentUntreatedCases.length > 1 ? "s" : ""} dans la file active.
+                  </div>
+                  <Button type="button" className="w-full rounded-2xl bg-rose-600 text-white hover:bg-rose-500" onClick={handleUrgentAlertClick}>
+                    Voir les patients non encore traités
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
             <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
@@ -1538,7 +1598,7 @@ function StaffPage() {
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
                     <span>{row.waitingTimeMinutes} min</span>
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                      <Button type="button" size="sm" className="h-8 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500" onClick={() => openPatientDetail(row.triageCaseId)}>
                         View Patient
                       </Button>
                       <Button
@@ -1584,7 +1644,7 @@ function StaffPage() {
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
                     <span>{row.waitingTimeMinutes} min</span>
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                      <Button type="button" size="sm" className="h-8 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500" onClick={() => openPatientDetail(row.triageCaseId)}>
                         View Patient
                       </Button>
                       <Button
