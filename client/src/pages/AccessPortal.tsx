@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { resolvePublicOrigin } from "../../../shared/publicOrigin";
 
 export default function AccessPortal() {
   const [, setLocation] = useLocation();
@@ -71,7 +72,13 @@ export default function AccessPortal() {
       return "";
     }
 
-    return new URL(patientPath, window.location.origin).toString();
+    const publicOrigin = resolvePublicOrigin({
+      currentOrigin: window.location.origin,
+      referrer: document.referrer,
+      ancestorOrigins: window.location.ancestorOrigins,
+    });
+
+    return new URL(patientPath, publicOrigin || window.location.origin).toString();
   }, [patientPath]);
 
   async function handlePatientAccess() {

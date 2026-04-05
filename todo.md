@@ -90,3 +90,4 @@
 - [x] Ajouter une alerte urgente temporaire à droite pour les cas prioritaires non encore traités, cliquable vers la liste des patients en attente.
 - [x] Afficher sur le portail d’authentification un QR code et un lien direct pointant vers le formulaire patient public.
 - [x] Remonter le QR code et le lien direct du formulaire patient sur la page d’authentification pour qu’ils soient visibles sans défilement.
+- [x] Corriger le lien public affiché avec le QR code patient pour qu’il utilise toujours l’URL publique du formulaire patient au lieu de 127.0.0.1.
