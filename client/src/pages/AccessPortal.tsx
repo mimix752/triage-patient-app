@@ -139,10 +139,7 @@ export default function AccessPortal() {
             <CardHeader className="space-y-3 p-6 sm:p-7">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 hover:bg-emerald-100">
-                  Portail d’accès
-                </Badge>
-                <Badge variant="outline" className="rounded-full border-slate-200 bg-white/80 px-3 py-1 text-slate-600">
-                  Personnel & patients séparés
+                  Accès clinique
                 </Badge>
               </div>
               <div className="space-y-3">
@@ -150,13 +147,13 @@ export default function AccessPortal() {
                   Accès clinique.
                 </CardTitle>
                 <CardDescription className="max-w-md text-[15px] leading-7 text-slate-600">
-                  Ouvrez rapidement le bon parcours selon le profil : patient pour l’arrivée et personnel pour l’admission et le suivi du service.
+                  Choisissez simplement l’entrée patient ou l’accès personnel.
                 </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 p-6 pt-0 sm:p-7 sm:pt-0">
               <div className="rounded-[1.35rem] border border-emerald-100 bg-emerald-50/70 px-4 py-3.5">
-                <p className="text-sm leading-6 text-emerald-900">Accueil séparé pour fluidifier l’entrée des patients et limiter l’encombrement côté personnel.</p>
+                <p className="text-sm leading-6 text-emerald-900">Le QR code et le lien patient sont centralisés ici pour l’accueil.</p>
               </div>
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Ouverture rapide</p>
@@ -181,9 +178,9 @@ export default function AccessPortal() {
                   </Button>
                 </div>
               </div>
-              <div className="grid gap-3 lg:grid-cols-[210px_minmax(0,1fr)]">
+              <div className="grid gap-3 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-stretch">
                 <div className="rounded-[1.4rem] border border-emerald-200/80 bg-white/88 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Scanner ce QR code</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">QR code</p>
                   <div className="mt-3 flex flex-col items-center gap-3 rounded-[1.2rem] bg-white p-3 shadow-sm">
                     {patientUrl ? (
                       <div className="rounded-[1rem] bg-white p-2 ring-1 ring-emerald-100">
@@ -194,16 +191,11 @@ export default function AccessPortal() {
                         {patientEntryQuery.isLoading || patientEntryQuery.isFetching ? "Préparation du QR code…" : "QR code indisponible pour le moment."}
                       </div>
                     )}
-                    <p className="text-center text-xs leading-5 text-slate-600">
-                      À afficher à l’accueil ou à scanner depuis un mobile.
-                    </p>
+                    <p className="text-center text-xs leading-5 text-slate-600">À scanner à l’accueil.</p>
                   </div>
                 </div>
                 <div className="rounded-[1.4rem] border border-emerald-200/80 bg-white/88 p-4 text-sm leading-6 text-slate-700">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Accéder à ce lien</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Le lien public ouvre toujours le formulaire patient, jamais l’espace personnel.
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Lien patient</p>
                   {patientUrl ? (
                     <a
                       href={patientUrl}
@@ -214,20 +206,6 @@ export default function AccessPortal() {
                   ) : (
                     <p className="mt-3 text-slate-500">Le lien direct du formulaire patient est en cours de préparation.</p>
                   )}
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50/90 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Personnel</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">Admission, file active et suivi opérationnel.</p>
-                    </div>
-                    <div className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50/90 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Patients</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">Identité, symptômes, photo ou scan selon le besoin.</p>
-                    </div>
-                    <div className="rounded-[1.2rem] border border-slate-200/80 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Flux clinique</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">Le scan clinique par caméra reste dans le parcours patient pour éviter de surcharger l’espace personnel.</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -248,22 +226,12 @@ export default function AccessPortal() {
               </CardHeader>
               <CardContent className="space-y-4 p-6 pt-0 sm:p-7 sm:pt-0">
                 <div className="rounded-[1.25rem] border border-emerald-200 bg-white/85 p-4 text-sm leading-6 text-slate-700">
-                  Le QR code et le lien d’accès patient sont désormais centralisés dans la carte « Accès clinique » pour l’accueil et l’orientation rapide.
+                  Le patient peut entrer directement dans son formulaire d’arrivée.
                 </div>
                 <Button className="h-11 w-full rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
                   {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
                   Entrer dans l’espace patient
                 </Button>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[1.25rem] border border-emerald-200/70 bg-white/85 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Parcours public</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">Identité, symptômes, voix et caméra restent dans un parcours séparé du personnel.</p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-emerald-200/70 bg-white/85 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Accueil</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">Le formulaire peut être ouvert directement depuis l’accueil, le QR code ou le lien public affiché à gauche.</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
