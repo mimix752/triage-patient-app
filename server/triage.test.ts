@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { beforeEach } from "vitest";
 import {
   decodeDataUrl,
   extractIdentityFromTranscript,
@@ -20,7 +21,12 @@ import {
   pickActivePatientEntryLink,
 } from "../shared/accessControl";
 import { countPendingTreatmentCases, isCasePendingTreatment, triageStatusLabels } from "../shared/caseStatus";
-import { preferPublicUrl, resolvePublicOrigin, resolveRequestPublicOrigin } from "../shared/publicOrigin";
+import {
+  __resetPublicOriginForTests,
+  preferPublicUrl,
+  resolvePublicOrigin,
+  resolveRequestPublicOrigin,
+} from "../shared/publicOrigin";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -367,6 +373,10 @@ describe("public URL helper", () => {
 });
 
 describe("public origin helper", () => {
+  beforeEach(() => {
+    __resetPublicOriginForTests();
+  });
+
   it("conserve une origine déjà publique", () => {
     const origin = resolvePublicOrigin({
       currentOrigin: "https://3000-demo.manus.computer",
@@ -395,17 +405,21 @@ describe("public origin helper", () => {
     expect(origin).toBe("https://app.manus.im");
   });
 
-  it("ignore les referrers locaux et retourne l’origine courante en dernier recours", () => {
+  it("ignore les origines locales restantes et retourne une chaîne vide lorsqu’aucune origine publique n’est disponible", () => {
     const origin = resolvePublicOrigin({
       currentOrigin: "http://127.0.0.1:3000",
       referrer: "http://localhost:5173/some-preview",
     });
 
-    expect(origin).toBe("http://127.0.0.1:3000");
+    expect(origin).toBe("");
   });
 });
 
 describe("request public origin helper", () => {
+  beforeEach(() => {
+    __resetPublicOriginForTests();
+  });
+
   it("préfère x-forwarded-origin lorsqu’il est public", () => {
     const origin = resolveRequestPublicOrigin({
       host: "127.0.0.1:3000",
@@ -434,6 +448,23 @@ describe("request public origin helper", () => {
     });
 
     expect(origin).toBe("");
+  });
+
+  it("réutilise la dernière origine publique connue quand une vue locale interroge ensuite le serveur", () => {
+    const publicOrigin = resolveRequestPublicOrigin({
+      host: "127.0.0.1:3000",
+      "x-forwarded-origin": "https://3000-demo.manus.computer",
+      "x-forwarded-host": "127.0.0.1:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    const localOrigin = resolveRequestPublicOrigin({
+      host: "127.0.0.1:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    expect(publicOrigin).toBe("https://3000-demo.manus.computer");
+    expect(localOrigin).toBe("https://3000-demo.manus.computer");
   });
 });
 

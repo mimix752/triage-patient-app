@@ -64,12 +64,12 @@ describe("resolvePublicOrigin", () => {
     expect(origin).toBe("https://app.manus.im");
   });
 
-  it("ignore les referrers locaux et retourne l’origine courante en dernier recours", () => {
+  it("ignore les origines locales restantes et retourne une chaîne vide lorsqu’aucune origine publique n’est disponible", () => {
     const origin = resolvePublicOrigin({
       currentOrigin: "http://127.0.0.1:3000",
       referrer: "http://localhost:5173/some-preview",
     });
 
-    expect(origin).toBe("http://127.0.0.1:3000");
+    expect(origin).toBe("");
   });
 });

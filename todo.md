@@ -106,3 +106,4 @@
 - [x] Vérifier manuellement les retouches visuelles récentes dans AccessPortal.tsx et corriger les styles incohérents avant le prochain checkpoint.
 - [x] Simplifier la page d’authentification pour ne garder que les informations essentielles.
 - [x] Corriger dans AccessPortal.tsx les styles JSX invalides introduits par les dernières retouches visuelles.
+- [x] Fiabiliser la génération et l’affichage du lien patient pour qu’aucune vue du portail n’expose 127.0.0.1 comme URL partageable.

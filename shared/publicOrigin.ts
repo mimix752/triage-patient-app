@@ -1,7 +1,18 @@
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
+let lastKnownPublicOrigin = "";
+
+export function __resetPublicOriginForTests() {
+  lastKnownPublicOrigin = "";
+}
+
 function isLocalHostname(hostname: string) {
   return LOCAL_HOSTNAMES.has(hostname.toLowerCase());
+}
+
+function rememberPublicOrigin(origin: string) {
+  lastKnownPublicOrigin = origin;
+  return origin;
 }
 
 function firstHeaderValue(value?: string | string[] | null) {
@@ -25,7 +36,7 @@ function parsePublicOrigin(candidate?: string | null) {
       return null;
     }
 
-    return url.origin;
+    return rememberPublicOrigin(url.origin);
   } catch {
     return null;
   }
@@ -56,7 +67,7 @@ export function preferPublicUrl(input: {
     try {
       const parsedCandidateUrl = new URL(candidateUrl);
       if (!isLocalHostname(parsedCandidateUrl.hostname)) {
-        return parsedCandidateUrl.toString();
+        return rememberPublicOrigin(parsedCandidateUrl.toString());
       }
     } catch {
       // Ignore malformed candidate URL and rebuild below.
@@ -91,7 +102,7 @@ export function resolvePublicOrigin(input: {
   if (currentOrigin) {
     const currentUrl = new URL(currentOrigin);
     if (!isLocalHostname(currentUrl.hostname)) {
-      return currentOrigin;
+      return rememberPublicOrigin(currentOrigin);
     }
   }
 
@@ -109,7 +120,7 @@ export function resolvePublicOrigin(input: {
     return referrerOrigin;
   }
 
-  return currentOrigin;
+  return lastKnownPublicOrigin;
 }
 
 export function resolveRequestPublicOrigin(headers: {
@@ -140,10 +151,10 @@ export function resolveRequestPublicOrigin(headers: {
   const proto = firstHeaderValue(headers["x-forwarded-proto"]) || "https";
 
   if (!host) {
-    return "";
+    return lastKnownPublicOrigin;
   }
 
   const candidate = `${proto}://${host}`;
   const publicOrigin = parsePublicOrigin(candidate);
-  return publicOrigin || "";
+  return publicOrigin || lastKnownPublicOrigin;
 }
