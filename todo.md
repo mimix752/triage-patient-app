@@ -67,3 +67,6 @@
 - [x] Adapter les intitulés et textes de l’application au contexte d’une vraie clinique.
 
 - [x] Compacter davantage le portail d’accès pour réduire la densité visuelle du panneau gauche et obtenir un accueil plus sobre et plus clinique.
+- [x] Ajouter dans l’espace personnel deux actions rapides à côté du patient pour le faire passer en cours de traitement ou traité.
+- [x] Mettre à jour les indicateurs de charge pour mieux compter les patients non encore traités et améliorer la gestion de l’affluence.
+- [x] Rendre plus discrète ou retirer de l’écran d’accueil la zone des emails autorisés dans le portail d’accès pour un rendu plus professionnel et plus clinique.

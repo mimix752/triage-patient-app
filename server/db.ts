@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { countPendingTreatmentCases } from "../shared/caseStatus";
 import {
   InsertPatient,
   InsertPatientFormLink,
@@ -274,22 +275,25 @@ export async function listRecentNotifications(limit = 8) {
 
 export async function getDashboardSummary() {
   const db = await requireDb();
-  const [summaryRow] = await db
-    .select({
-      totalPatients: sql<number>`count(${triageCases.id})`,
-      waitingPatients: sql<number>`sum(case when ${triageCases.status} = 'en_attente' then 1 else 0 end)`,
-      urgentPatients: sql<number>`sum(case when ${triageCases.priority} in ('urgence_vitale', 'urgence') then 1 else 0 end)`,
-      p1Patients: sql<number>`sum(case when ${triageCases.priority} = 'urgence_vitale' then 1 else 0 end)`,
-      avgWaitingMinutes: sql<number>`coalesce(avg(${triageCases.waitingTimeMinutes}), 0)`,
-      manualOverrides: sql<number>`sum(case when ${triageCases.manualPriorityOverride} = true then 1 else 0 end)`,
-    })
-    .from(triageCases);
+  const [[summaryRow], cases] = await Promise.all([
+    db
+      .select({
+        totalPatients: sql<number>`count(${triageCases.id})`,
+        urgentPatients: sql<number>`sum(case when ${triageCases.priority} in ('urgence_vitale', 'urgence') then 1 else 0 end)`,
+        p1Patients: sql<number>`sum(case when ${triageCases.priority} = 'urgence_vitale' then 1 else 0 end)`,
+        avgWaitingMinutes: sql<number>`coalesce(avg(${triageCases.waitingTimeMinutes}), 0)`,
+        manualOverrides: sql<number>`sum(case when ${triageCases.manualPriorityOverride} = true then 1 else 0 end)`,
+      })
+      .from(triageCases),
+    db.select({ status: triageCases.status }).from(triageCases),
+  ]);
 
   const staffing = await getLatestStaffingSnapshot();
+  const pendingTreatmentCount = countPendingTreatmentCases(cases);
 
   return {
     totalPatients: Number(summaryRow?.totalPatients ?? 0),
-    waitingPatients: Number(summaryRow?.waitingPatients ?? 0),
+    waitingPatients: pendingTreatmentCount,
     urgentPatients: Number(summaryRow?.urgentPatients ?? 0),
     p1Patients: Number(summaryRow?.p1Patients ?? 0),
     avgWaitingMinutes: Math.round(Number(summaryRow?.avgWaitingMinutes ?? 0)),
@@ -300,7 +304,7 @@ export async function getDashboardSummary() {
           nursesOnDuty: staffing.nursesOnDuty,
           availableDoctors: staffing.availableDoctors,
           availableNurses: staffing.availableNurses,
-          waitingPatients: staffing.waitingPatients,
+          waitingPatients: pendingTreatmentCount,
           activeCriticalPatients: staffing.activeCriticalPatients,
           occupancyPressureScore: staffing.occupancyPressureScore,
           updatedAt: staffing.createdAt,

@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { countPendingTreatmentCases, triageStatusLabels, type TriageCaseStatus } from "../../../shared/caseStatus";
 import { LOCAL_ADMIN_EMAIL_STORAGE_KEY, normalizeEmail } from "../../../shared/accessControl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -125,7 +126,7 @@ type DashboardCase = {
   aiRecommendedPriority: Priority | null;
   entryMode: "standard_ai" | "manual_p1" | "manual_staff";
   manualPriorityOverride: boolean;
-  status: "en_attente" | "en_cours" | "oriente" | "termine";
+  status: TriageCaseStatus;
   queueRank: number;
   queuePressureScore: number;
   targetWaitMinutes: number;
@@ -157,7 +158,7 @@ type ActivePatient = {
   triageCaseId: number;
   patientDisplayName: string;
   priority: Priority;
-  status: "en_attente" | "en_cours" | "oriente" | "termine";
+  status: TriageCaseStatus;
   queueRank: number;
   waitingTimeMinutes: number;
   chiefComplaint: string;
@@ -231,7 +232,7 @@ const intakeLabels: Record<IntakeMethod, string> = {
 
 const statCards: StatCard[] = [
   { key: "totalPatients", label: "Patients suivis", icon: UserPlus, accent: "from-slate-950 to-slate-700", suffix: "" },
-  { key: "waitingPatients", label: "En attente", icon: Clock3, accent: "from-blue-600 to-cyan-500", suffix: "" },
+  { key: "waitingPatients", label: "Non encore traités", icon: Clock3, accent: "from-blue-600 to-cyan-500", suffix: "" },
   { key: "urgentPatients", label: "Cas prioritaires", icon: AlertTriangle, accent: "from-rose-600 to-orange-500", suffix: "" },
   { key: "avgWaitingMinutes", label: "Attente moyenne", icon: Waves, accent: "from-emerald-600 to-teal-500", suffix: " min" },
 ];
@@ -452,6 +453,16 @@ function StaffPage() {
       toast.error(error instanceof Error ? error.message : "Une erreur est survenue."),
   });
 
+  const updateCaseStatusMutation = trpc.triage.updateStatus.useMutation({
+    onSuccess: async (_result, variables) => {
+      toast.success(`Statut mis à jour : ${triageStatusLabels[variables.status]}.`);
+      await utils.triage.staffBootstrap.invalidate();
+      await utils.triage.dashboard.invalidate();
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Impossible de mettre à jour le statut du patient."),
+  });
+
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -486,6 +497,10 @@ function StaffPage() {
 
   const dashboard = bootstrapQuery.data as StaffBootstrapPayload | undefined;
   const topPriorityCase = dashboard?.cases?.[0] ?? null;
+  const pendingTreatmentCount = useMemo(() => countPendingTreatmentCases(dashboard?.cases ?? []), [dashboard?.cases]);
+  const inTreatmentCount = useMemo(() => (dashboard?.cases ?? []).filter((row) => row.status === "en_cours").length, [dashboard?.cases]);
+  const treatedCount = useMemo(() => (dashboard?.cases ?? []).filter((row) => row.status === "termine").length, [dashboard?.cases]);
+  const pendingStatusCaseId = updateCaseStatusMutation.variables?.triageCaseId;
 
   async function handleIdentityFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -695,6 +710,10 @@ function StaffPage() {
     });
   }
 
+  async function markCaseStatus(triageCaseId: number, status: TriageCaseStatus) {
+    await updateCaseStatusMutation.mutateAsync({ triageCaseId, status });
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -783,24 +802,48 @@ function StaffPage() {
               </div>
             </div>
 
-            <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
-              {statCards.map((card) => {
-                const value = dashboard?.summary?.[card.key] ?? 0;
-                return (
-                    <Card key={card.key} className="rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur">
-                    <CardContent className="flex h-full min-h-[10.6rem] flex-col p-4 sm:p-5">
-                      <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
-                        <card.icon className="h-4.5 w-4.5" />
-                      </div>
-                      <p className="mt-2.5 text-sm text-slate-500">{card.label}</p>
-                      <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
-                        {value}
-                        {card.suffix}
-                      </p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="space-y-3 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
+              <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2">
+                {statCards.map((card) => {
+                  const value = dashboard?.summary?.[card.key] ?? 0;
+                  return (
+                      <Card key={card.key} className="rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur">
+                      <CardContent className="flex h-full min-h-[10.6rem] flex-col p-4 sm:p-5">
+                        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
+                          <card.icon className="h-4.5 w-4.5" />
+                        </div>
+                        <p className="mt-2.5 text-sm text-slate-500">{card.label}</p>
+                        <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
+                          {value}
+                          {card.suffix}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)]">
+                <CardContent className="space-y-3 p-4 sm:p-5">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement.</p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Non traités</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-950">{pendingTreatmentCount}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">En traitement</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-950">{inTreatmentCount}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Traités</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-950">{treatedCount}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
@@ -1088,7 +1131,7 @@ function StaffPage() {
                     <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Tri par priorité et attente</Badge>
                   </div>
                   <CardTitle className="mt-4 text-2xl text-slate-950">Tableau de bord des patients</CardTitle>
-                  <CardDescription className="text-base leading-7 text-slate-600">Vue temps réel des patients en attente, des admissions P1 et des dossiers issus du QR code public.</CardDescription>
+                  <CardDescription className="text-base leading-7 text-slate-600">Vue temps réel des patients non encore traités, des admissions P1 et des dossiers issus du formulaire patient.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto px-5 pb-5 sm:px-7 sm:pb-7">
@@ -1108,9 +1151,35 @@ function StaffPage() {
                         {(dashboard?.cases ?? []).map((row: DashboardCase) => (
                           <TableRow key={row.triageCaseId}>
                             <TableCell>
-                              <div>
-                                <p className="font-medium text-slate-900">{row.patientFirstName} {row.patientLastName}</p>
-                                <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "QR patient" : intakeLabels[row.intakeMethod]}</p>
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="font-medium text-slate-900">{row.patientFirstName} {row.patientLastName}</p>
+                                  <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "Formulaire patient" : intakeLabels[row.intakeMethod]}</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={row.status === "en_cours" ? "default" : "outline"}
+                                    className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
+                                    onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
+                                    disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                                  >
+                                    {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "en_cours" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                    En traitement
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={row.status === "termine" ? "default" : "outline"}
+                                    className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
+                                    onClick={() => markCaseStatus(row.triageCaseId, "termine")}
+                                    disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                                  >
+                                    {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "termine" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                    Traité
+                                  </Button>
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell><Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge></TableCell>
@@ -1118,7 +1187,7 @@ function StaffPage() {
                             <TableCell>#{row.queueRank}</TableCell>
                             <TableCell>{row.waitingTimeMinutes} min</TableCell>
                             <TableCell className="max-w-[280px] truncate">{row.chiefComplaint}</TableCell>
-                            <TableCell><Badge variant="outline" className="rounded-full">{row.status.replaceAll("_", " ")}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1245,9 +1314,34 @@ function StaffPage() {
                   </div>
                   <Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge>
                 </div>
-                <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-500">
                   <span>Rang #{row.queueRank}</span>
+                  <Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-500">
                   <span>{row.waitingTimeMinutes} min</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={row.status === "en_cours" ? "default" : "outline"}
+                      className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
+                      onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
+                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                    >
+                      En traitement
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={row.status === "termine" ? "default" : "outline"}
+                      className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
+                      onClick={() => markCaseStatus(row.triageCaseId, "termine")}
+                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                    >
+                      Traité
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

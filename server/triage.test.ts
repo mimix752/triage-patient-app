@@ -19,6 +19,7 @@ import {
   normalizeEmail as normalizeAccessEmail,
   pickActivePatientEntryLink,
 } from "../shared/accessControl";
+import { countPendingTreatmentCases, isCasePendingTreatment, triageStatusLabels } from "../shared/caseStatus";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -235,6 +236,26 @@ describe("live transcription fallback", () => {
         details: "Voice transcription service authentication is missing",
       }),
     ).toBe(false);
+  });
+});
+
+describe("case status helpers", () => {
+  it("compte comme non encore traités les patients en attente et en cours de traitement", () => {
+    expect(
+      countPendingTreatmentCases([
+        { status: "en_attente" as const },
+        { status: "en_cours" as const },
+        { status: "termine" as const },
+        { status: "oriente" as const },
+      ]),
+    ).toBe(2);
+  });
+
+  it("identifie correctement les statuts encore non traités et le libellé traité", () => {
+    expect(isCasePendingTreatment("en_attente")).toBe(true);
+    expect(isCasePendingTreatment("en_cours")).toBe(true);
+    expect(isCasePendingTreatment("termine")).toBe(false);
+    expect(triageStatusLabels.termine).toBe("Traité");
   });
 });
 

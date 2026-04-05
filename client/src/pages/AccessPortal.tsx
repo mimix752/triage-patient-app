@@ -7,7 +7,6 @@ import { trpc } from "@/lib/trpc";
 import {
   isAuthorizedLocalAdminCredentials,
   LOCAL_ADMIN_EMAIL_STORAGE_KEY,
-  LOCAL_ADMIN_EMAILS,
   LOCAL_ADMIN_PASSWORD_STORAGE_KEY,
   normalizeEmail,
 } from "../../../shared/accessControl";
@@ -192,11 +191,11 @@ export default function AccessPortal() {
                   Accéder à l’espace personnel
                 </Button>
                 <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                  <p className="font-medium text-slate-900">Emails autorisés</p>
-                  <p className="mt-2">{LOCAL_ADMIN_EMAILS.join(" · ")}</p>
+                  <p className="font-medium text-slate-900">Accès réservé</p>
+                  <p className="mt-2">Cette zone est destinée au personnel autorisé de la clinique. Les identifiants de service sont communiqués en interne.</p>
                 </div>
                 <p className="text-sm leading-6 text-slate-500">
-                  Cet accès local est réservé au personnel autorisé de la clinique.
+                  Si vous êtes membre de l’équipe, utilisez vos accès professionnels fournis par la clinique.
                 </p>
               </CardContent>
             </Card>
