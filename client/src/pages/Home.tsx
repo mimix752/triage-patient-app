@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -312,6 +313,15 @@ function formatDate(value: string | number | Date | null | undefined) {
   });
 }
 
+function formatValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return "—";
+  return String(value);
+}
+
+function formatBooleanFlag(value: boolean) {
+  return value ? "Oui" : "Non";
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -500,8 +510,16 @@ function StaffPage() {
   }, [matchStaffBoard, matchStaffNew, matchStaffProtocols]);
   const [staffSection, setStaffSection] = useState<"identity" | "clinical" | "capacity" | "priority">("identity");
   const [dashboardQuickFilter, setDashboardQuickFilter] = useState<DashboardQuickFilter>("all");
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
 
   const dashboard = bootstrapQuery.data as StaffBootstrapPayload | undefined;
+  const caseDetailQuery = trpc.triage.caseDetail.useQuery(
+    { triageCaseId: selectedCaseId ?? 0 },
+    {
+      enabled: isAuthorizedStaff && selectedCaseId !== null,
+      staleTime: 10_000,
+    },
+  );
   const topPriorityCase = dashboard?.cases?.[0] ?? null;
   const pendingTreatmentCount = useMemo(() => countPendingTreatmentCases(dashboard?.cases ?? []), [dashboard?.cases]);
   const inTreatmentCount = useMemo(() => (dashboard?.cases ?? []).filter((row) => row.status === "en_cours").length, [dashboard?.cases]);
@@ -537,10 +555,27 @@ function StaffPage() {
     }
   }, [averageWaitThreshold, dashboard?.activePatients, dashboardQuickFilter]);
 
+  const untreatedCases = useMemo(
+    () => filteredCases.filter((row) => row.status === "en_attente"),
+    [filteredCases],
+  );
+  const managedCases = useMemo(
+    () => filteredCases.filter((row) => row.status !== "en_attente"),
+    [filteredCases],
+  );
+  const untreatedActivePatients = useMemo(
+    () => filteredActivePatients.filter((row) => row.status === "en_attente"),
+    [filteredActivePatients],
+  );
+  const managedActivePatients = useMemo(
+    () => filteredActivePatients.filter((row) => row.status !== "en_attente"),
+    [filteredActivePatients],
+  );
+
   const quickFilterMeta = useMemo(() => {
     switch (dashboardQuickFilter) {
       case "pending":
-        return { title: "File des patients non encore traités", description: "Patients en attente ou déjà pris en charge mais non encore clôturés." };
+        return { title: "Patients en attente de premier traitement", description: "Patients dont la prise en charge n’a pas encore commencé dans le service." };
       case "urgent":
         return { title: "File des cas prioritaires", description: "Patients urgents ou en urgence vitale à traiter en premier." };
       case "long_wait":
@@ -762,9 +797,18 @@ function StaffPage() {
     await updateCaseStatusMutation.mutateAsync({ triageCaseId, status });
   }
 
+  function openPatientDetail(triageCaseId: number) {
+    setSelectedCaseId(triageCaseId);
+  }
+
   function handleDashboardCardClick(filter: DashboardQuickFilter) {
     setDashboardQuickFilter(filter);
     setLocation("/staff/tableau-de-bord");
+
+    const targetId = filter === "pending" ? "staff-untreated-section" : "staff-board-section";
+    window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
   }
 
   if (loading) {
@@ -1194,87 +1238,179 @@ function StaffPage() {
             )}
 
             {(activeView === "overview" || activeView === "board") && (
-              <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
-                <CardHeader className="p-5 sm:p-7">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">File active</Badge>
-                    <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Tri par priorité et attente</Badge>
-                  </div>
-                  <CardTitle className="mt-4 text-2xl text-slate-950">{quickFilterMeta.title}</CardTitle>
-                  <CardDescription className="text-base leading-7 text-slate-600">{quickFilterMeta.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto px-5 pb-5 sm:px-7 sm:pb-7">
-                    <div className="mb-4 flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-3 py-1 text-slate-600">
-                        {dashboardQuickFilter === "all" ? "Vue complète" : "Vue filtrée"}
-                      </Badge>
-                      {dashboardQuickFilter !== "all" ? (
-                        <Button type="button" size="sm" variant="outline" className="rounded-xl bg-white" onClick={() => setDashboardQuickFilter("all")}>
-                          Réinitialiser le filtre
-                        </Button>
-                      ) : null}
+              <div id="staff-board-section" className="space-y-5">
+                <Card id="staff-untreated-section" className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
+                  <CardHeader className="p-5 sm:p-7">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">Patients à traiter</Badge>
+                      <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">Premier traitement non démarré</Badge>
                     </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Patient</TableHead>
-                          <TableHead>Priorité</TableHead>
-                          <TableHead>Entrée</TableHead>
-                          <TableHead>Rang</TableHead>
-                          <TableHead>Attente</TableHead>
-                          <TableHead>Motif</TableHead>
-                          <TableHead>Statut</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredCases.map((row: DashboardCase) => (
-                          <TableRow key={row.triageCaseId}>
-                            <TableCell>
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="font-medium text-slate-900">{row.patientFirstName} {row.patientLastName}</p>
-                                  <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "Formulaire patient" : intakeLabels[row.intakeMethod]}</p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={row.status === "en_cours" ? "default" : "outline"}
-                                    className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
-                                    onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
-                                    disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
-                                  >
-                                    {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "en_cours" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
-                                    En traitement
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={row.status === "termine" ? "default" : "outline"}
-                                    className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
-                                    onClick={() => markCaseStatus(row.triageCaseId, "termine")}
-                                    disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
-                                  >
-                                    {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "termine" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
-                                    Traité
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell><Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge></TableCell>
-                            <TableCell>{row.entryMode === "manual_p1" ? "P1 manuel" : row.entryMode === "manual_staff" ? "Override manuel" : "IA assistée"}</TableCell>
-                            <TableCell>#{row.queueRank}</TableCell>
-                            <TableCell>{row.waitingTimeMinutes} min</TableCell>
-                            <TableCell className="max-w-[280px] truncate">{row.chiefComplaint}</TableCell>
-                            <TableCell><Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge></TableCell>
+                    <CardTitle className="mt-4 text-2xl text-slate-950">{quickFilterMeta.title}</CardTitle>
+                    <CardDescription className="text-base leading-7 text-slate-600">{quickFilterMeta.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto px-5 pb-5 sm:px-7 sm:pb-7">
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-3 py-1 text-slate-600">
+                          {dashboardQuickFilter === "all" ? "Vue complète" : "Vue filtrée"}
+                        </Badge>
+                        {dashboardQuickFilter !== "all" ? (
+                          <Button type="button" size="sm" variant="outline" className="rounded-xl bg-white" onClick={() => setDashboardQuickFilter("all")}>
+                            Réinitialiser le filtre
+                          </Button>
+                        ) : null}
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Patient</TableHead>
+                            <TableHead>Priorité</TableHead>
+                            <TableHead>Entrée</TableHead>
+                            <TableHead>Rang</TableHead>
+                            <TableHead>Attente</TableHead>
+                            <TableHead>Motif</TableHead>
+                            <TableHead>Statut</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                        </TableHeader>
+                        <TableBody>
+                          {untreatedCases.length ? untreatedCases.map((row: DashboardCase) => (
+                            <TableRow key={row.triageCaseId}>
+                              <TableCell>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="font-medium text-slate-900">{row.patientFirstName} {row.patientLastName}</p>
+                                    <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "Formulaire patient" : intakeLabels[row.intakeMethod]}</p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                                      View Patient
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={row.status === "en_cours" ? "default" : "outline"}
+                                      className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
+                                      onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
+                                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                                    >
+                                      {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "en_cours" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                      En traitement
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={row.status === "termine" ? "default" : "outline"}
+                                      className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
+                                      onClick={() => markCaseStatus(row.triageCaseId, "termine")}
+                                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                                    >
+                                      {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "termine" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                      Traité
+                                    </Button>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell><Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge></TableCell>
+                              <TableCell>{row.entryMode === "manual_p1" ? "P1 manuel" : row.entryMode === "manual_staff" ? "Override manuel" : "IA assistée"}</TableCell>
+                              <TableCell>#{row.queueRank}</TableCell>
+                              <TableCell>{row.waitingTimeMinutes} min</TableCell>
+                              <TableCell className="max-w-[280px] truncate">{row.chiefComplaint}</TableCell>
+                              <TableCell><Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge></TableCell>
+                            </TableRow>
+                          )) : (
+                            <TableRow>
+                              <TableCell colSpan={7} className="py-8 text-center text-sm text-slate-500">
+                                Aucun patient en attente de premier traitement dans cette vue.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
+                  <CardHeader className="p-5 sm:p-7">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className="rounded-full bg-emerald-700 px-3 py-1 text-white hover:bg-emerald-700">Patients déjà pris en charge</Badge>
+                      <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">En traitement, orientés ou traités</Badge>
+                    </div>
+                    <CardTitle className="mt-4 text-2xl text-slate-950">Suivi du traitement</CardTitle>
+                    <CardDescription className="text-base leading-7 text-slate-600">Cette zone regroupe les patients pour lesquels le personnel a déjà commencé la prise en charge ou clôturé le passage.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto px-5 pb-5 sm:px-7 sm:pb-7">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Patient</TableHead>
+                            <TableHead>Priorité</TableHead>
+                            <TableHead>Entrée</TableHead>
+                            <TableHead>Rang</TableHead>
+                            <TableHead>Attente</TableHead>
+                            <TableHead>Motif</TableHead>
+                            <TableHead>Statut</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {managedCases.length ? managedCases.map((row: DashboardCase) => (
+                            <TableRow key={row.triageCaseId}>
+                              <TableCell>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="font-medium text-slate-900">{row.patientFirstName} {row.patientLastName}</p>
+                                    <p className="text-xs text-slate-500">{row.intakeSource === "patient_qr" ? "Formulaire patient" : intakeLabels[row.intakeMethod]}</p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                                      View Patient
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={row.status === "en_cours" ? "default" : "outline"}
+                                      className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
+                                      onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
+                                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                                    >
+                                      {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "en_cours" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                      En traitement
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant={row.status === "termine" ? "default" : "outline"}
+                                      className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
+                                      onClick={() => markCaseStatus(row.triageCaseId, "termine")}
+                                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                                    >
+                                      {updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId && updateCaseStatusMutation.variables?.status === "termine" ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                      Traité
+                                    </Button>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell><Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge></TableCell>
+                              <TableCell>{row.entryMode === "manual_p1" ? "P1 manuel" : row.entryMode === "manual_staff" ? "Override manuel" : "IA assistée"}</TableCell>
+                              <TableCell>#{row.queueRank}</TableCell>
+                              <TableCell>{row.waitingTimeMinutes} min</TableCell>
+                              <TableCell className="max-w-[280px] truncate">{row.chiefComplaint}</TableCell>
+                              <TableCell><Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge></TableCell>
+                            </TableRow>
+                          )) : (
+                            <TableRow>
+                              <TableCell colSpan={7} className="py-8 text-center text-sm text-slate-500">
+                                Aucun patient déjà pris en charge dans cette vue.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {activeView === "protocols" && dashboard?.protocolSummary ? (
@@ -1379,54 +1515,196 @@ function StaffPage() {
           </div>
         </div>
 
-        <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
-          <CardHeader>
-            <CardTitle className="text-xl text-slate-950">Patients actifs pour le staff</CardTitle>
-            <CardDescription>Vue condensée des admissions en cours pour usage terrain.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {filteredActivePatients.map((row: ActivePatient) => (
-              <div key={row.triageCaseId} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900">{row.patientDisplayName}</p>
-                    <p className="text-xs text-slate-500">{row.chiefComplaint}</p>
+        <div className="grid gap-5 xl:grid-cols-2">
+          <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
+            <CardHeader>
+              <CardTitle className="text-xl text-slate-950">Patients actifs à prendre en charge</CardTitle>
+              <CardDescription>Admissions dont le traitement n’a pas encore commencé.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              {untreatedActivePatients.length ? untreatedActivePatients.map((row: ActivePatient) => (
+                <div key={row.triageCaseId} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">{row.patientDisplayName}</p>
+                      <p className="text-xs text-slate-500">{row.chiefComplaint}</p>
+                    </div>
+                    <Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge>
                   </div>
-                  <Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge>
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-500">
-                  <span>Rang #{row.queueRank}</span>
-                  <Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge>
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-500">
-                  <span>{row.waitingTimeMinutes} min</span>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={row.status === "en_cours" ? "default" : "outline"}
-                      className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
-                      onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
-                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
-                    >
-                      En traitement
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={row.status === "termine" ? "default" : "outline"}
-                      className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
-                      onClick={() => markCaseStatus(row.triageCaseId, "termine")}
-                      disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
-                    >
-                      Traité
-                    </Button>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-500">
+                    <span>Rang #{row.queueRank}</span>
+                    <Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                    <span>{row.waitingTimeMinutes} min</span>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                        View Patient
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={row.status === "en_cours" ? "default" : "outline"}
+                        className={`h-8 rounded-xl ${row.status === "en_cours" ? "bg-blue-700 text-white hover:bg-blue-600" : "bg-white"}`}
+                        onClick={() => markCaseStatus(row.triageCaseId, "en_cours")}
+                        disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                      >
+                        En traitement
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              )) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/60 p-6 text-sm text-slate-500">
+                  Aucun patient en attente de premier traitement dans cette vue.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
+            <CardHeader>
+              <CardTitle className="text-xl text-slate-950">Patients en traitement ou traités</CardTitle>
+              <CardDescription>Admissions déjà prises en charge, en cours de traitement, orientées ou clôturées.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              {managedActivePatients.length ? managedActivePatients.map((row: ActivePatient) => (
+                <div key={row.triageCaseId} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">{row.patientDisplayName}</p>
+                      <p className="text-xs text-slate-500">{row.chiefComplaint}</p>
+                    </div>
+                    <Badge className={`rounded-full border ${priorityClasses[row.priority]}`}>{priorityLabels[row.priority]}</Badge>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-500">
+                    <span>Rang #{row.queueRank}</span>
+                    <Badge variant="outline" className="rounded-full">{triageStatusLabels[row.status]}</Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                    <span>{row.waitingTimeMinutes} min</span>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl bg-white" onClick={() => openPatientDetail(row.triageCaseId)}>
+                        View Patient
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={row.status === "termine" ? "default" : "outline"}
+                        className={`h-8 rounded-xl ${row.status === "termine" ? "bg-emerald-700 text-white hover:bg-emerald-600" : "bg-white"}`}
+                        onClick={() => markCaseStatus(row.triageCaseId, "termine")}
+                        disabled={updateCaseStatusMutation.isPending && pendingStatusCaseId === row.triageCaseId}
+                      >
+                        Traité
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/60 p-6 text-sm text-slate-500">
+                  Aucun patient déjà pris en charge dans cette vue.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Dialog open={selectedCaseId !== null} onOpenChange={(open) => !open && setSelectedCaseId(null)}>
+          <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Dossier patient complet</DialogTitle>
+              <DialogDescription>
+                Consultez l’ensemble des informations saisies à l’admission et durant le triage clinique.
+              </DialogDescription>
+            </DialogHeader>
+
+            {caseDetailQuery.isLoading ? (
+              <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Chargement du dossier patient…
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            ) : caseDetailQuery.data ? (
+              <div className="space-y-6">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Card className="rounded-[1.5rem] border-slate-200 bg-slate-50/70 shadow-none">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-slate-950">Identité</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 sm:grid-cols-2">
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Nom</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.patientLastName)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Prénom</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.patientFirstName)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Date de naissance</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.patientDateOfBirth)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Sécurité sociale</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.patientSocialSecurityNumberMasked)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Téléphone</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.mobileNumber)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Langue</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.preferredLanguage)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Mode de saisie</p><p className="mt-1 text-sm font-medium text-slate-900">{intakeLabels[caseDetailQuery.data.intakeMethod as IntakeMethod]}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Document d’identité</p><p className="mt-1 text-sm font-medium text-slate-900">{caseDetailQuery.data.identitySourceUrl ? "Document enregistré" : "Non fourni"}</p></div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-[1.5rem] border-slate-200 bg-slate-50/70 shadow-none">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-slate-950">Synthèse clinique</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Motif principal</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.chiefComplaint)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Résumé symptomatique</p><p className="mt-1 text-sm leading-6 text-slate-700">{formatValue(caseDetailQuery.data.symptomSummary)}</p></div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Priorité</p><p className="mt-1 text-sm font-medium text-slate-900">{priorityLabels[caseDetailQuery.data.priority as Priority]}</p></div>
+                        <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Statut</p><p className="mt-1 text-sm font-medium text-slate-900">{triageStatusLabels[caseDetailQuery.data.status as TriageCaseStatus]}</p></div>
+                        <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Action recommandée</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.recommendedAction)}</p></div>
+                        <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Référence protocole</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.protocolReference)}</p></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="rounded-[1.5rem] border-slate-200 bg-slate-50/70 shadow-none">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-slate-950">Constantes et signaux</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Douleur</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.painLevel)}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">SpO₂</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.oxygenSaturation)}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Fréquence cardiaque</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.heartRate)}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">TA systolique</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.systolicBloodPressure)}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Respiration</p><p className="mt-1 text-sm font-medium text-slate-900">{formatValue(caseDetailQuery.data.respiratoryRate)}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Peut marcher</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.canWalk))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Saignement</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasBleeding))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Hémorragie sévère</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasSevereBleeding))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Détresse respiratoire</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasBreathingDifficulty))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Douleur thoracique</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasChestPain))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Déficit neurologique</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasNeurologicalDeficit))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Perte de connaissance</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasLossOfConsciousness))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Fièvre élevée</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasHighFever))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Traumatisme</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.hasTrauma))}</p></div>
+                    <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Grossesse connue</p><p className="mt-1 text-sm font-medium text-slate-900">{formatBooleanFlag(Boolean(caseDetailQuery.data.isPregnant))}</p></div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[1.5rem] border-slate-200 bg-slate-50/70 shadow-none">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-slate-950">Traçabilité</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 lg:grid-cols-2">
+                    <div className="space-y-3">
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Créé le</p><p className="mt-1 text-sm font-medium text-slate-900">{formatDate(caseDetailQuery.data.createdAt)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Mis à jour le</p><p className="mt-1 text-sm font-medium text-slate-900">{formatDate(caseDetailQuery.data.updatedAt)}</p></div>
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Notes</p><p className="mt-1 text-sm leading-6 text-slate-700">{formatValue(caseDetailQuery.data.patientNotes)}</p></div>
+                    </div>
+                    <div className="space-y-3">
+                      <div><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Transcript vocal</p><p className="mt-1 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{formatValue(caseDetailQuery.data.voiceTranscript)}</p></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">
+                Impossible de charger le dossier patient demandé.
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

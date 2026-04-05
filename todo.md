@@ -76,3 +76,6 @@
 - [x] Corriger le chevauchement visuel entre les cartes interactives de gauche et le formulaire personnel de droite sur le portail d’accès clinique.
 - [x] Poursuivre l’affinage visuel du portail d’accès en ajustant encore les espacements, la hiérarchie typographique et le rendu des cartes d’accès.
 - [x] Finaliser le portail d’accès avec une dernière passe de micro-ajustements sur les espacements, l’alignement et l’équilibre visuel des deux colonnes.
+- [x] Corriger les cartes interactives du tableau de bord personnel pour qu’elles ouvrent réellement les bonnes vues ou filtres.
+- [x] Ajouter un bouton View Patient pour afficher toutes les informations saisies concernant chaque patient.
+- [x] Séparer visuellement et fonctionnellement les patients traités ou en cours de traitement de ceux qui n’ont pas encore reçu de traitement.

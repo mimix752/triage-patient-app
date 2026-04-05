@@ -14,6 +14,7 @@ import {
   createStaffNotificationRecord,
   createTriageCaseRecord,
   createTriageEventRecord,
+  getCaseById,
   getCaseTimeline,
   getDashboardSummary,
   getLatestStaffingSnapshot,
@@ -1115,6 +1116,19 @@ export const appRouter = router({
           skipAiAnalysis: false,
           ownerPrefix: `triage/public/${link.token}`,
         });
+      }),
+    caseDetail: protectedProcedure
+      .input(z.object({ triageCaseId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const triageCase = await getCaseById(input.triageCaseId);
+        if (!triageCase) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Le dossier patient demandé est introuvable.",
+          });
+        }
+
+        return triageCase;
       }),
     caseTimeline: protectedProcedure
       .input(z.object({ triageCaseId: z.number().int().positive() }))
