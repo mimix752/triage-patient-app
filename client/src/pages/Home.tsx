@@ -916,15 +916,15 @@ function StaffPage() {
                 </div>
               </div>
             </div>
-            <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)] lg:mt-9">
+            <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)] lg:mt-9" style={{ marginTop: '74px', marginBottom: '8px' }}>
               <CardContent className="flex h-full min-h-[15.5rem] flex-col p-4 sm:p-5">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
                   <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement. Touchez une carte de suivi pour filtrer instantanément la file active.</p>
                 </div>
                 <div className="mt-auto grid gap-2 pt-4">
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Non traités</p>
+                  <div className="rounded-2xl bg-slate-50 p-3" style={{ backgroundColor: '#f50505' }}>
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-400" style={{ color: '#121212' }}>Non traités</p>
                     <p className="mt-1 text-xl font-semibold text-slate-950">{pendingTreatmentCount}</p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -932,8 +932,8 @@ function StaffPage() {
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-400">En traitement</p>
                       <p className="mt-1 text-xl font-semibold text-slate-950">{inTreatmentCount}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Traités</p>
+                    <div className="rounded-2xl bg-slate-50 p-3" style={{ backgroundColor: '#1eff00' }}>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400" style={{ color: '#0a0a0a' }}>Traités</p>
                       <p className="mt-1 text-xl font-semibold text-slate-950">{treatedCount}</p>
                     </div>
                   </div>

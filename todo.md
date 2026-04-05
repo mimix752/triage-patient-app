@@ -102,3 +102,4 @@
 - [x] Déplacer la carte « Pilotage de flux » à droite du bloc d’accueil clinique dans le hero du tableau de bord staff.
 - [x] Intégrer le QR code et le lien patient public directement dans la carte « Accès clinique » du portail d’authentification.
 - [x] Retirer de la carte « Espace personnel » le bloc « Besoin d’ouvrir le parcours patient à l’accueil ? / Aller vers l’espace patient ».
+- [x] Vérifier manuellement les retouches visuelles récentes du hero staff dans Home.tsx et réappliquer celles qui n’ont pas réellement été persistées avant le prochain checkpoint.
