@@ -37,9 +37,9 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Vue d’ensemble", path: "/" },
-  { icon: ClipboardPlus, label: "Nouveau dossier", path: "/nouveau-dossier" },
-  { icon: Activity, label: "Tableau de bord", path: "/tableau-de-bord" },
+  { icon: LayoutDashboard, label: "Accueil service", path: "/" },
+  { icon: ClipboardPlus, label: "Admission patient", path: "/nouveau-dossier" },
+  { icon: Activity, label: "Salle d’attente", path: "/tableau-de-bord" },
   { icon: ShieldAlert, label: "Protocoles", path: "/protocoles" },
 ];
 
@@ -72,14 +72,13 @@ export default function DashboardLayout({
       <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(28,124,84,0.12),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(239,246,255,0.92)_100%)] px-4">
         <div className="w-full max-w-lg rounded-[2rem] border border-white/60 bg-white/85 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.10)] backdrop-blur-xl">
           <Badge className="mb-4 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 hover:bg-emerald-50">
-            Triage médical intelligent
+            Espace clinique sécurisé
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
             Accès réservé au personnel soignant
           </h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            Connectez-vous pour accéder aux parcours d’accueil patient, à la priorisation clinique
-            assistée et au tableau de bord temps réel des urgences.
+            Connectez-vous pour accéder à l’admission patient, à la salle d’attente et au suivi opérationnel du service.
           </p>
           <Button
             onClick={() => {
@@ -88,7 +87,7 @@ export default function DashboardLayout({
             size="lg"
             className="mt-8 h-12 w-full rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800"
           >
-            Ouvrir l’espace clinique
+            Ouvrir l’espace personnel
           </Button>
         </div>
       </div>
@@ -184,10 +183,10 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                   </div>
                   <div>
                     <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">
-                      Triage Patient Intelligent
+                      Triage clinique
                     </p>
                     <p className="mt-1 text-xs leading-5 text-sidebar-foreground/65">
-                      Parcours d’admission, priorisation clinique et supervision en mobilité.
+                      Admission, salle d’attente et suivi opérationnel du service.
                     </p>
                   </div>
                 </div>
@@ -221,11 +220,10 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
               <div className="mt-4 rounded-[1.6rem] border border-emerald-200/70 bg-[linear-gradient(180deg,rgba(236,253,245,0.92),rgba(240,249,255,0.90))] p-4 shadow-[0_20px_50px_rgba(16,185,129,0.10)]">
                 <div className="flex items-center gap-2 text-emerald-700">
                   <Sparkles className="h-4 w-4" />
-                  <span className="text-sm font-semibold">Assistant de priorisation</span>
+                  <span className="text-sm font-semibold">Aide à la priorisation</span>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-emerald-900/75">
-                  Le moteur de triage applique une logique simplifiée inspirée des protocoles ESI et
-                  exige toujours une validation médicale finale.
+                  Les recommandations servent d’appui au tri. La décision finale reste sous la responsabilité de l’équipe soignante.
                 </p>
               </div>
             ) : null}
@@ -276,7 +274,8 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                 <span className="text-sm font-semibold tracking-tight text-foreground">
                   {activeMenuItem?.label ?? "Triage"}
                 </span>
-                <span className="text-[11px] text-muted-foreground">Mobilité clinique sécurisée</span>
+                  <span className="text-[11px] text-muted-foreground">Usage clinique mobile</span>
+
               </div>
             </div>
           </div>

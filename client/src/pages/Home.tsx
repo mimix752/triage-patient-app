@@ -482,6 +482,7 @@ function StaffPage() {
     if (matchStaffProtocols) return "protocols";
     return "overview";
   }, [matchStaffBoard, matchStaffNew, matchStaffProtocols]);
+  const [staffSection, setStaffSection] = useState<"identity" | "clinical" | "capacity" | "priority">("identity");
 
   const dashboard = bootstrapQuery.data as StaffBootstrapPayload | undefined;
   const topPriorityCase = dashboard?.cases?.[0] ?? null;
@@ -736,44 +737,45 @@ function StaffPage() {
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 lg:gap-6">
         <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_26%),radial-gradient(circle_at_85%_12%,_rgba(59,130,246,0.14),_transparent_24%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(241,245,249,0.94))] p-5 shadow-[0_30px_90px_rgba(15,23,42,0.08)] sm:p-7 xl:p-8">
           <div className="absolute inset-x-6 top-5 flex justify-end sm:inset-x-auto sm:right-5">
-            <div className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur">
-              Accès complet personnel · tablette & smartphone
-            </div>
+              <div className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur">
+                Espace personnel clinique
+              </div>
+
           </div>
 
           <div className="grid gap-4 pt-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(272px,328px)] lg:items-start lg:gap-5 lg:pt-0 xl:grid-cols-[minmax(0,1.04fr)_minmax(292px,344px)] xl:gap-6">
             <div className="min-w-0 max-w-[42rem]">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">Version 2 · IA + capacitaire</Badge>
-                <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">2 parcours séparés</Badge>
+                <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">Interface clinique</Badge>
+                <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Personnel et patients séparés</Badge>
               </div>
               <h1 className="mt-4 max-w-[18ch] text-balance text-[1.8rem] font-semibold leading-[1.03] tracking-[-0.04em] text-slate-950 sm:text-[2.1rem] lg:text-[2.35rem] xl:text-[2.55rem]">
-                Triage urgentiste avec accès personnel et formulaire patient par QR code.
+                Accueil clinique, admission patient et suivi de la salle d’attente.
               </h1>
               <p className="mt-3 max-w-[38rem] text-sm leading-7 text-slate-600 sm:text-[15px] sm:leading-7">
-                L’analyse croise signaux cliniques, identité, transcription vocale et pression opérationnelle en fonction de la file active et des soignants disponibles.
+                Utilisez des espaces distincts pour l’admission, l’évaluation clinique et l’état opérationnel du service, avec un parcours patient public séparé.
               </p>
               <div className="mt-4 grid gap-2.5 md:grid-cols-3 lg:max-w-[39rem]">
                 <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)] lg:min-h-[9.5rem]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Personnel</p>
-                  <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Accès complet et sécurisé à toute l’application</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Admission</p>
+                  <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Créer ou compléter un dossier patient avec les champs utiles uniquement.</p>
                 </div>
                 <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)] lg:min-h-[9.5rem]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Patient</p>
-                  <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Formulaire public uniquement via QR code</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Parcours patient</p>
+                  <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Formulaire public avec identité, voix et caméra de sécurité clinique.</p>
                 </div>
                 <div className="rounded-[1.35rem] border border-white/70 bg-white/75 p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.045)] lg:min-h-[9.5rem]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">P1 manuel</p>
-                  <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Admission critique sans attendre l’IA ni les symptômes complets</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Service</p>
+                  <p className="mt-1.5 text-sm font-medium leading-6 text-slate-900">Séparer la capacité opérationnelle, la file active et les alertes du service.</p>
                 </div>
               </div>
               <div className="mt-5 flex flex-col gap-3 sm:max-w-[39rem] sm:flex-row sm:flex-wrap sm:items-center">
                 <Button className="h-12 w-full justify-center rounded-2xl bg-slate-950 px-6 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800 sm:w-auto" onClick={() => setLocation("/staff/nouveau-dossier")}>
-                  Créer un dossier personnel
+                  Admission patient
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={() => setLocation("/staff/tableau-de-bord")}>
-                  Ouvrir le tableau de bord
+                  Salle d’attente
                 </Button>
                 <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={logout}>
                   Déconnexion
@@ -814,20 +816,37 @@ function StaffPage() {
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_390px]">
           <div className="space-y-5">
-            {(activeView === "overview" || activeView === "new") && (
+            {activeView === "new" && (
               <Card className="overflow-hidden rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
                 <CardHeader className="border-b border-slate-100/80 p-5 sm:p-7">
                   <div className="flex flex-wrap items-center gap-3">
-                    <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 hover:bg-emerald-100">Admission personnel</Badge>
-                    <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-3 py-1 text-slate-600">IA avancée + règles</Badge>
-                    <Badge variant="outline" className="rounded-full border-rose-200 bg-rose-50 px-3 py-1 text-rose-700">Override P1 immédiat</Badge>
+                    <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 hover:bg-emerald-100">Admission patient</Badge>
+                    <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-3 py-1 text-slate-600">Saisie clinique guidée</Badge>
+                    <Badge variant="outline" className="rounded-full border-rose-200 bg-rose-50 px-3 py-1 text-rose-700">Priorité P1 immédiate</Badge>
                   </div>
-                  <CardTitle className="mt-4 text-2xl text-slate-950">Créer un dossier de triage</CardTitle>
+                  <CardTitle className="mt-4 text-2xl text-slate-950">Dossier d’accueil</CardTitle>
                   <CardDescription className="text-base leading-7 text-slate-600">
-                    Le personnel soignant choisit le mode de saisie, renseigne les constantes et peut forcer une priorité P1 sans attendre que le patient fournisse l’ensemble des données.
+                    Choisissez une section de travail pour éviter d’afficher tous les champs en même temps à l’accueil du service.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-5 sm:p-7">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <Button type="button" variant={staffSection === "identity" ? "default" : "outline"} className={`rounded-2xl ${staffSection === "identity" ? "bg-slate-950 text-white hover:bg-slate-800" : "bg-white"}`} onClick={() => setStaffSection("identity")}>
+                      Identité
+                    </Button>
+                    <Button type="button" variant={staffSection === "clinical" ? "default" : "outline"} className={`rounded-2xl ${staffSection === "clinical" ? "bg-slate-950 text-white hover:bg-slate-800" : "bg-white"}`} onClick={() => setStaffSection("clinical")}>
+                      Évaluation
+                    </Button>
+                    <Button type="button" variant={staffSection === "capacity" ? "default" : "outline"} className={`rounded-2xl ${staffSection === "capacity" ? "bg-slate-950 text-white hover:bg-slate-800" : "bg-white"}`} onClick={() => setStaffSection("capacity")}>
+                      Capacité du service
+                    </Button>
+                    <Button type="button" variant={staffSection === "priority" ? "default" : "outline"} className={`rounded-2xl ${staffSection === "priority" ? "bg-slate-950 text-white hover:bg-slate-800" : "bg-white"}`} onClick={() => setStaffSection("priority")}>
+                      Décision rapide
+                    </Button>
+                  </div>
+
+                  {staffSection === "identity" ? (
+                    <>
                   <Tabs value={intakeMethod} onValueChange={(value) => setIntakeMethod(value as IntakeMethod)}>
                     <TabsList className="grid h-auto w-full grid-cols-3 rounded-2xl bg-slate-100 p-1">
                       <TabsTrigger value="ocr" className="rounded-2xl py-3">OCR</TabsTrigger>
@@ -842,12 +861,21 @@ function StaffPage() {
                             <FileBadge className="h-5 w-5" />
                           </div>
                           <div>
-                            <h3 className="text-base font-semibold text-slate-900">Scan de carte d’identité</h3>
-                            <p className="mt-1 text-sm leading-6 text-slate-500">Téléversez la pièce du patient pour extraction structurée côté serveur, avec correction manuelle possible.</p>
+                            <h3 className="text-base font-semibold text-slate-900">Carte d’identité</h3>
+                            <p className="mt-1 text-sm leading-6 text-slate-500">Ajoutez la pièce du patient par fichier ou prenez une photo depuis l’appareil de l’accueil.</p>
                           </div>
                         </div>
-                        <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center">
-                          <Input type="file" accept="image/*" onChange={handleIdentityFile} className="rounded-2xl bg-white" />
+                        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                          <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
+                            <p className="text-sm font-medium text-slate-900">Téléverser un fichier</p>
+                            <Input type="file" accept="image/*" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
+                          </div>
+                          <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
+                            <p className="text-sm font-medium text-slate-900">Prendre une photo</p>
+                            <Input type="file" accept="image/*" capture="environment" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-3">
                           <Button type="button" variant="outline" className="rounded-2xl bg-white" onClick={() => toast.info("Le document sera analysé lors de l’enregistrement du dossier.") }>
                             <Upload className="mr-2 h-4 w-4" />
                             Préparer l’analyse
@@ -897,25 +925,6 @@ function StaffPage() {
                     </TabsContent>
                   </Tabs>
 
-                  <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50/70 p-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <h3 className="text-base font-semibold text-slate-900">Supervision caméra critique</h3>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">Une analyse visuelle périodique repère les signaux très critiques et peut créer un dossier prioritaire P1 automatiquement.</p>
-                      </div>
-                      <Button type="button" onClick={cameraEnabled ? stopCameraMonitoring : startCameraMonitoring} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
-                        {cameraEnabled ? "Arrêter la caméra" : "Activer la caméra"}
-                      </Button>
-                    </div>
-                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-                      <video ref={cameraVideoRef} muted playsInline className="aspect-video w-full rounded-[1.4rem] border border-slate-200 bg-slate-950 object-cover" />
-                      <div className="rounded-[1.4rem] border border-white/80 bg-white p-4 text-sm text-slate-600">
-                        <p className="font-medium text-slate-900">Dernière synthèse caméra</p>
-                        <p className="mt-2 leading-6">{cameraAlertSummary || "Aucune alerte critique détectée pour le moment."}</p>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="space-y-2">
                       <Label>Prénom</Label>
@@ -934,11 +943,13 @@ function StaffPage() {
                       <Input value={identity.socialSecurityNumber} onChange={(event) => updateIdentity("socialSecurityNumber", event.target.value)} className="rounded-2xl bg-white" placeholder="Numéro" />
                     </div>
                   </div>
+                    </>
+                  ) : null}
 
-                  <Separator />
+                  {staffSection !== "identity" ? <Separator /> : null}
 
                   <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.2fr)_420px]">
-                    <div className="space-y-5">
+                    <div className={staffSection === "clinical" ? "space-y-5" : "hidden"}>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2 md:col-span-2">
                           <Label>Motif de consultation</Label>
@@ -1020,8 +1031,8 @@ function StaffPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-5">
-                      <Card className="rounded-[1.6rem] border-slate-200 bg-slate-50/70 shadow-none">
+                    <div className={staffSection === "capacity" || staffSection === "priority" ? "space-y-5" : "hidden"}>
+                      <Card className={staffSection === "capacity" ? "rounded-[1.6rem] border-slate-200 bg-slate-50/70 shadow-none" : "hidden"}>
                         <CardHeader>
                           <CardTitle className="text-lg text-slate-950">Capacité opérationnelle</CardTitle>
                           <CardDescription>L’IA pondère la priorisation selon les ressources réellement disponibles.</CardDescription>
@@ -1040,7 +1051,7 @@ function StaffPage() {
                         </CardContent>
                       </Card>
 
-                      <Card className="rounded-[1.6rem] border-rose-200 bg-rose-50/60 shadow-none">
+                      <Card className={staffSection === "priority" ? "rounded-[1.6rem] border-rose-200 bg-rose-50/60 shadow-none" : "hidden"}>
                         <CardHeader>
                           <CardTitle className="text-lg text-rose-800">Ajout manuel P1</CardTitle>
                           <CardDescription>Décision soignante immédiate sans attendre l’étude IA, même si le patient n’a pas encore tout donné.</CardDescription>
@@ -1117,7 +1128,7 @@ function StaffPage() {
               </Card>
             )}
 
-            {(activeView === "overview" || activeView === "protocols") && dashboard?.protocolSummary ? (
+            {activeView === "protocols" && dashboard?.protocolSummary ? (
               <Card className="rounded-[1.9rem] border-white/70 bg-white/85 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
                 <CardHeader className="p-5 sm:p-7">
                   <CardTitle className="text-2xl text-slate-950">Cadre clinique du prototype</CardTitle>
@@ -1504,10 +1515,10 @@ function PatientPage({ token }: { token: string }) {
             <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Accès via QR code</Badge>
           </div>
           <h1 className="mt-5 max-w-3xl text-[2.1rem] font-semibold leading-tight tracking-[-0.04em] text-slate-950 sm:text-[2.8rem]">
-            Pré-enregistrez votre dossier avant l’évaluation par l’équipe soignante.
+            Enregistrez rapidement votre arrivée à la clinique.
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
-            Cette page sert uniquement à collecter vos informations d’identité et votre motif de consultation. La priorité finale est confirmée ensuite par le personnel médical.
+            Renseignez votre identité, votre motif de consultation et, si besoin, activez la caméra de sécurité clinique depuis cet espace patient.
           </p>
           {bootstrap?.link ? (
             <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
@@ -1524,8 +1535,8 @@ function PatientPage({ token }: { token: string }) {
 
         <Card className="rounded-[1.9rem] border-white/70 bg-white/90 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
           <CardHeader>
-            <CardTitle className="text-2xl text-slate-950">Formulaire patient</CardTitle>
-            <CardDescription className="text-base leading-7 text-slate-600">Choisissez votre mode de saisie puis décrivez votre problème de santé le plus précisément possible.</CardDescription>
+            <CardTitle className="text-2xl text-slate-950">Admission patient</CardTitle>
+            <CardDescription className="text-base leading-7 text-slate-600">Choisissez votre mode de saisie, puis complétez uniquement les informations nécessaires à votre accueil.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <Tabs value={intakeMethod} onValueChange={(value) => setIntakeMethod(value as IntakeMethod)}>
@@ -1535,19 +1546,29 @@ function PatientPage({ token }: { token: string }) {
                 <TabsTrigger value="vocal" className="rounded-2xl py-3">Voix</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="ocr" className="mt-5">
+                    <TabsContent value="ocr" className="mt-5">
                 <div className="rounded-[1.6rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><FileBadge className="h-5 w-5" /></div>
                     <div>
-                      <h3 className="text-base font-semibold text-slate-900">Ajouter une pièce d’identité</h3>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">Le document servira à pré-remplir vos informations avant vérification humaine à l’accueil.</p>
+                      <h3 className="text-base font-semibold text-slate-900">Carte d’identité</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">Vous pouvez téléverser votre document ou prendre une photo avec la caméra de votre téléphone.</p>
                     </div>
                   </div>
-                  <div className="mt-5"><Input type="file" accept="image/*" onChange={handleIdentityFile} className="rounded-2xl bg-white" /></div>
+                  <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
+                      <p className="text-sm font-medium text-slate-900">Téléverser un fichier</p>
+                      <Input type="file" accept="image/*" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
+                    </div>
+                    <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
+                      <p className="text-sm font-medium text-slate-900">Prendre une photo</p>
+                      <Input type="file" accept="image/*" capture="environment" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
+                    </div>
+                  </div>
                   {identityFileName ? <p className="mt-3 text-sm text-slate-500">Document sélectionné : {identityFileName}</p> : null}
                 </div>
               </TabsContent>
+
 
               <TabsContent value="vocal" className="mt-5">
                 <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50/70 p-5">
@@ -1568,8 +1589,8 @@ function PatientPage({ token }: { token: string }) {
             <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50/70 p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">Surveillance caméra de sécurité clinique</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Une analyse visuelle périodique peut signaler un effondrement, une hémorragie visible ou une détresse respiratoire et prévenir immédiatement l’équipe.</p>
+                  <h3 className="text-base font-semibold text-slate-900">Caméra de sécurité clinique</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">Activez la caméra si le patient présente un malaise, une chute, une détresse respiratoire ou un saignement visible afin d’alerter l’équipe plus vite.</p>
                 </div>
                 <Button type="button" onClick={cameraEnabled ? stopPatientCameraMonitoring : startPatientCameraMonitoring} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
                   {cameraEnabled ? "Arrêter la caméra" : "Activer la caméra"}
@@ -1599,7 +1620,7 @@ function PatientPage({ token }: { token: string }) {
               <div className="space-y-2"><Label>Niveau de douleur</Label><Input type="number" min={0} max={10} value={assessment.painLevel} onChange={(event) => updateAssessment("painLevel", Number(event.target.value || 0))} className="rounded-2xl bg-white" /></div>
               <div className="space-y-2"><Label>Langue</Label><Select value={preferredLanguage} onValueChange={setPreferredLanguage}><SelectTrigger className="rounded-2xl bg-white"><SelectValue placeholder="Choisir" /></SelectTrigger><SelectContent><SelectItem value="fr">Français</SelectItem><SelectItem value="ar">Arabe</SelectItem><SelectItem value="darija">Darija</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></div>
               <div className="space-y-2"><Label>Téléphone</Label><Input value={mobileNumber} onChange={(event) => setMobileNumber(event.target.value)} className="rounded-2xl bg-white" /></div>
-              <div className="space-y-2"><Label>Notes complémentaires</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} className="rounded-2xl bg-white" /></div>
+              <div className="space-y-2"><Label>Informations utiles pour l’accueil</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} className="rounded-2xl bg-white" placeholder="Traitement en cours, allergie, accompagnant, autre précision" /></div>
             </div>
 
             <div>

@@ -59,3 +59,11 @@
 - [x] Corriger le refus d’accès à l’espace personnel admin lorsqu’un compte connecté semble déjà avoir le rôle administrateur.
 - [x] Remplacer l’accès admin actuel par une authentification locale sur le portail avec les emails marouaidomar1@gmail.com, bellaouhammousalma@gmail.com et mariamessaber20@gmail.com, et le mot de passe partagé 1234.
 - [x] Corriger l’erreur "Maximum update depth exceeded" dans le composant AccessPortal au chargement de la page d’entrée.
+- [x] Alléger les textes de l’interface et supprimer le contenu non essentiel pour un usage clinique réel.
+- [x] Déplacer la caméra de scan de l’état du patient vers l’espace patient et la retirer de l’espace personnel.
+- [x] Permettre la capture de la carte d’identité soit par téléversement de fichier soit par prise de photo caméra.
+- [x] Réorganiser la page espace personnel en sections distinctes, notamment formulaire de triage et capacité opérationnelle.
+- [x] Séparer les champs et parcours dans l’espace personnel pour éviter de tout afficher sur la page d’accueil.
+- [x] Adapter les intitulés et textes de l’application au contexte d’une vraie clinique.
+
+- [x] Compacter davantage le portail d’accès pour réduire la densité visuelle du panneau gauche et obtenir un accueil plus sobre et plus clinique.
