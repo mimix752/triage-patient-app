@@ -74,3 +74,5 @@
 - [x] Rendre le portail d’accès plus interactif, plus direct et mieux équilibré visuellement en réduisant le vide à gauche et en facilitant l’accès aux espaces personnel et patient.
 - [x] Affiner encore le portail d’accès en améliorant la hiérarchie visuelle de la colonne gauche, en allégeant le bloc personnel à droite et en renforçant l’interactivité d’accès côté patient et personnel.
 - [x] Corriger le chevauchement visuel entre les cartes interactives de gauche et le formulaire personnel de droite sur le portail d’accès clinique.
+- [x] Poursuivre l’affinage visuel du portail d’accès en ajustant encore les espacements, la hiérarchie typographique et le rendu des cartes d’accès.
+- [x] Finaliser le portail d’accès avec une dernière passe de micro-ajustements sur les espacements, l’alignement et l’équilibre visuel des deux colonnes.
