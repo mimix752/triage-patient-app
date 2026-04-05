@@ -118,8 +118,8 @@ export default function AccessPortal() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_24%),radial-gradient(circle_at_85%_10%,_rgba(59,130,246,0.16),_transparent_26%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_100%)] p-6 sm:p-8">
       <div className="container flex min-h-[calc(100vh-3rem)] items-center">
-        <div className="grid w-full gap-5 lg:grid-cols-[0.94fr_1.06fr] xl:gap-6">
-          <Card className="rounded-[2rem] border-white/70 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur">
+        <div className="grid w-full items-start gap-5 lg:grid-cols-[0.94fr_1.06fr] xl:gap-6">
+          <Card className="min-w-0 rounded-[2rem] border-white/70 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur">
             <CardHeader className="space-y-4 p-7 sm:p-8">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 hover:bg-emerald-100">
@@ -145,8 +145,8 @@ export default function AccessPortal() {
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ouverture rapide</p>
                 <div className="grid gap-3">
-                  <Button className="h-auto rounded-[1.5rem] bg-emerald-600 px-5 py-4 text-left text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
-                    <div className="flex w-full items-start justify-between gap-3">
+                  <Button className="h-auto w-full justify-start whitespace-normal rounded-[1.5rem] bg-emerald-600 px-5 py-4 text-left text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
+                    <div className="flex w-full min-w-0 items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-base font-semibold">Entrée patient</p>
                         <p className="mt-1 text-sm leading-6 text-emerald-50">Formulaire d’arrivée immédiat, sans identifiants, avec parcours photo, scan et symptômes.</p>
@@ -154,8 +154,8 @@ export default function AccessPortal() {
                       {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin" /> : <QrCode className="mt-0.5 h-5 w-5 shrink-0" />}
                     </div>
                   </Button>
-                  <Button variant="outline" className="h-auto rounded-[1.5rem] border-slate-200 bg-white px-5 py-4 text-left hover:bg-slate-50" onClick={handleStaffShortcut}>
-                    <div className="flex w-full items-start justify-between gap-3 text-left">
+                  <Button variant="outline" className="h-auto w-full justify-start whitespace-normal rounded-[1.5rem] border-slate-200 bg-white px-5 py-4 text-left hover:bg-slate-50" onClick={handleStaffShortcut}>
+                    <div className="flex w-full min-w-0 items-start justify-between gap-3 text-left">
                       <div className="min-w-0">
                         <p className="text-base font-semibold text-slate-950">Accès personnel</p>
                         <p className="mt-1 text-sm leading-6 text-slate-600">Ouverture directe du formulaire sécurisé pour l’admission, la file active et le pilotage du service.</p>
@@ -182,7 +182,7 @@ export default function AccessPortal() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6">
+          <div className="grid min-w-0 gap-6">
             <Card className="rounded-[2rem] border-slate-200/80 bg-white/92 shadow-[0_24px_70px_rgba(15,23,42,0.10)]">
               <CardHeader className="space-y-4 p-7 sm:p-8">
                 <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-950 text-white">

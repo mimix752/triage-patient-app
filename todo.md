@@ -73,3 +73,4 @@
 - [x] Rendre les cartes de synthèse de l’espace personnel interactives pour ouvrir rapidement les vues utiles, appliquer des filtres et faciliter l’accès opérationnel du personnel.
 - [x] Rendre le portail d’accès plus interactif, plus direct et mieux équilibré visuellement en réduisant le vide à gauche et en facilitant l’accès aux espaces personnel et patient.
 - [x] Affiner encore le portail d’accès en améliorant la hiérarchie visuelle de la colonne gauche, en allégeant le bloc personnel à droite et en renforçant l’interactivité d’accès côté patient et personnel.
+- [x] Corriger le chevauchement visuel entre les cartes interactives de gauche et le formulaire personnel de droite sur le portail d’accès clinique.
