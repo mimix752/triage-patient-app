@@ -424,6 +424,7 @@ async function analyzeCriticalVisualSignals(params: {
   preferredLanguage: string;
 }) {
   const response = await invokeLLM({
+    model: "gemini-2.5-pro",
     messages: [
       {
         role: "system",
@@ -436,13 +437,14 @@ async function analyzeCriticalVisualSignals(params: {
           {
             type: "text",
             text:
-              `Analyse cette image de caméra patient. Langue préférée: ${params.preferredLanguage}. Détecte uniquement des signes visuels immédiatement observables parmi: évanouissement/perte de tonus, hémorragie sévère visible, posture anormale inquiétante, détresse respiratoire apparente. Si l’image n’est pas exploitable ou qu’aucune personne n’est visible, indique-le prudemment.`,
+              `Analyse cette image de caméra patient avec un niveau d’attention élevé. Langue préférée: ${params.preferredLanguage}. Détecte uniquement des signes visuels immédiatement observables parmi: évanouissement/perte de tonus, hémorragie sévère visible, posture anormale inquiétante, détresse respiratoire apparente. Si l’image n’est pas exploitable ou qu’aucune personne n’est visible, indique-le prudemment. En cas de doute, reste conservateur et n’invente aucun signe clinique non visible.`,
           },
           {
             type: "image_url",
             image_url: {
               url: params.imageDataUrl,
-              detail: "low",
+                  detail: "high",
+
             },
           },
         ],

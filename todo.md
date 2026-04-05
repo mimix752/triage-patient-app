@@ -119,3 +119,5 @@
 - [x] Isoler complètement la section Voix pour qu’elle contienne uniquement la reconnaissance vocale avec démarrage et arrêt explicites du micro.
 - [x] Isoler complètement la section Caméra pour qu’elle active uniquement le flux visuel à l’ouverture de cette section et crée automatiquement une fiche patient en cas d’urgence P1 détectée.
 - [x] Retirer le doublon résiduel « Accès personnel » encore visible dans la carte principale de la page d’accueil afin de ne conserver qu’un seul accès personnel à l’écran.
+- [x] Renforcer la section Caméra avec le meilleur modèle compatible pour la détection visuelle des situations d’urgence, puis revalider son comportement.
+- [x] Rétablir sur le portail d’accès un QR code patient visible et un lien public réellement exploitable, sans retour vers une URL locale.
