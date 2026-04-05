@@ -19,7 +19,7 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -28,6 +28,7 @@ export default function AccessPortal() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isOpeningPatientSpace, setIsOpeningPatientSpace] = useState(false);
+  const adminEmailRef = useRef<HTMLInputElement | null>(null);
 
   const patientEntryQuery = trpc.triage.publicPatientEntry.useQuery(undefined, {
     enabled: false,
@@ -109,11 +110,16 @@ export default function AccessPortal() {
     setLocation("/staff");
   }
 
+  function handleStaffShortcut() {
+    adminEmailRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    adminEmailRef.current?.focus();
+  }
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_24%),radial-gradient(circle_at_85%_10%,_rgba(59,130,246,0.16),_transparent_26%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_100%)] p-6 sm:p-8">
       <div className="container flex min-h-[calc(100vh-3rem)] items-center">
-        <div className="grid w-full gap-5 lg:grid-cols-[0.92fr_1.08fr] xl:gap-6">
-          <Card className="flex h-full flex-col rounded-[2rem] border-white/70 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur">
+        <div className="grid w-full gap-5 lg:grid-cols-[0.94fr_1.06fr] xl:gap-6">
+          <Card className="rounded-[2rem] border-white/70 bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur">
             <CardHeader className="space-y-4 p-7 sm:p-8">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 hover:bg-emerald-100">
@@ -124,28 +130,54 @@ export default function AccessPortal() {
                 </Badge>
               </div>
               <div className="space-y-3">
-                <CardTitle className="max-w-2xl text-3xl leading-tight tracking-[-0.03em] text-slate-950 sm:text-[2.6rem]">
+                <CardTitle className="max-w-xl text-3xl leading-tight tracking-[-0.03em] text-slate-950 sm:text-[2.6rem]">
                   Accès clinique.
                 </CardTitle>
-                <CardDescription className="max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-                  Le patient renseigne son arrivée. Le personnel accède à l’admission et au suivi du service.
+                <CardDescription className="max-w-lg text-sm leading-7 text-slate-600 sm:text-base">
+                  Ouvrez rapidement le bon parcours selon le profil : patient pour l’arrivée et personnel pour l’admission et le suivi du service.
                 </CardDescription>
-                <div className="rounded-[1.35rem] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm leading-6 text-emerald-900">
-                  Accueil séparé pour fluidifier l’entrée des patients et limiter l’encombrement côté personnel.
-                </div>
               </div>
             </CardHeader>
-            <CardContent className="mt-auto grid gap-3 p-7 pt-0 sm:grid-cols-2 sm:p-8 sm:pt-0">
-              <div className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Personnel</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">Accès réservé aux soignants et agents autorisés.</p>
+            <CardContent className="grid gap-4 p-7 pt-0 sm:p-8 sm:pt-0">
+              <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-4">
+                <p className="text-sm font-medium text-emerald-900">Accueil séparé pour fluidifier l’entrée des patients et limiter l’encombrement côté personnel.</p>
               </div>
-              <div className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Patients</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">Formulaire d’arrivée ouvert sans identifiants.</p>
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ouverture rapide</p>
+                <div className="grid gap-3">
+                  <Button className="h-auto rounded-[1.5rem] bg-emerald-600 px-5 py-4 text-left text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
+                    <div className="flex w-full items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-base font-semibold">Entrée patient</p>
+                        <p className="mt-1 text-sm leading-6 text-emerald-50">Formulaire d’arrivée immédiat, sans identifiants, avec parcours photo, scan et symptômes.</p>
+                      </div>
+                      {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin" /> : <QrCode className="mt-0.5 h-5 w-5 shrink-0" />}
+                    </div>
+                  </Button>
+                  <Button variant="outline" className="h-auto rounded-[1.5rem] border-slate-200 bg-white px-5 py-4 text-left hover:bg-slate-50" onClick={handleStaffShortcut}>
+                    <div className="flex w-full items-start justify-between gap-3 text-left">
+                      <div className="min-w-0">
+                        <p className="text-base font-semibold text-slate-950">Accès personnel</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">Ouverture directe du formulaire sécurisé pour l’admission, la file active et le pilotage du service.</p>
+                      </div>
+                      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
+                    </div>
+                  </Button>
+                </div>
               </div>
-              <div className="sm:col-span-2 rounded-[1.35rem] border border-slate-200/80 bg-white p-4 text-sm leading-6 text-slate-600">
-                L’espace personnel reste réservé à l’équipe. Le scan clinique par caméra est disponible dans le parcours patient.
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Personnel</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">Admission, file active et suivi opérationnel.</p>
+                </div>
+                <div className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Patients</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">Identité, symptômes, photo ou scan selon le besoin.</p>
+                </div>
+                <div className="sm:col-span-2 rounded-[1.35rem] border border-slate-200/80 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Flux clinique</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">Le scan clinique par caméra reste dans le parcours patient pour éviter de surcharger l’espace personnel.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -159,7 +191,7 @@ export default function AccessPortal() {
                 <div>
                   <CardTitle className="text-2xl text-slate-950">Espace personnel</CardTitle>
                   <CardDescription className="mt-2 text-base leading-7 text-slate-600">
-                    Saisissez un email autorisé et le mot de passe du service pour ouvrir l’espace personnel.
+                    Connectez-vous avec les accès du service pour ouvrir l’espace personnel.
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -168,6 +200,7 @@ export default function AccessPortal() {
                   <Label htmlFor="admin-email">Email professionnel</Label>
                   <Input
                     id="admin-email"
+                    ref={adminEmailRef}
                     type="email"
                     placeholder="service@clinique.ma"
                     value={adminEmail}
@@ -190,13 +223,21 @@ export default function AccessPortal() {
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Accéder à l’espace personnel
                 </Button>
-                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                  <p className="font-medium text-slate-900">Accès réservé</p>
-                  <p className="mt-2">Cette zone est destinée au personnel autorisé de la clinique. Les identifiants de service sont communiqués en interne.</p>
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start gap-3 text-sm leading-6 text-slate-600">
+                    <LockKeyhole className="mt-0.5 h-4.5 w-4.5 shrink-0 text-slate-500" />
+                    <div>
+                      <p className="font-medium text-slate-900">Accès réservé</p>
+                      <p className="mt-1">Les identifiants de service sont communiqués en interne au personnel autorisé.</p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm leading-6 text-slate-500">
-                  Si vous êtes membre de l’équipe, utilisez vos accès professionnels fournis par la clinique.
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                  <p>Besoin d’ouvrir le parcours patient à l’accueil ?</p>
+                  <Button type="button" variant="link" className="h-auto p-0 text-slate-900" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
+                    Aller vers l’espace patient
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 

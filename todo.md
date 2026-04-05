@@ -70,3 +70,6 @@
 - [x] Ajouter dans l’espace personnel deux actions rapides à côté du patient pour le faire passer en cours de traitement ou traité.
 - [x] Mettre à jour les indicateurs de charge pour mieux compter les patients non encore traités et améliorer la gestion de l’affluence.
 - [x] Rendre plus discrète ou retirer de l’écran d’accueil la zone des emails autorisés dans le portail d’accès pour un rendu plus professionnel et plus clinique.
+- [x] Rendre les cartes de synthèse de l’espace personnel interactives pour ouvrir rapidement les vues utiles, appliquer des filtres et faciliter l’accès opérationnel du personnel.
+- [x] Rendre le portail d’accès plus interactif, plus direct et mieux équilibré visuellement en réduisant le vide à gauche et en facilitant l’accès aux espaces personnel et patient.
+- [x] Affiner encore le portail d’accès en améliorant la hiérarchie visuelle de la colonne gauche, en allégeant le bloc personnel à droite et en renforçant l’interactivité d’accès côté patient et personnel.

@@ -202,12 +202,17 @@ type PatientBootstrapPayload = {
   protocolSummary: ProtocolSummary;
 };
 
+type DashboardQuickFilter = "all" | "pending" | "urgent" | "long_wait";
+
 type StatCard = {
   key: keyof Pick<DashboardSummary, "totalPatients" | "waitingPatients" | "urgentPatients" | "avgWaitingMinutes">;
   label: string;
   icon: LucideIcon;
   accent: string;
   suffix: string;
+  filter: DashboardQuickFilter;
+  helper: string;
+  cta: string;
 };
 
 const priorityClasses: Record<Priority, string> = {
@@ -231,10 +236,10 @@ const intakeLabels: Record<IntakeMethod, string> = {
 };
 
 const statCards: StatCard[] = [
-  { key: "totalPatients", label: "Patients suivis", icon: UserPlus, accent: "from-slate-950 to-slate-700", suffix: "" },
-  { key: "waitingPatients", label: "Non encore traités", icon: Clock3, accent: "from-blue-600 to-cyan-500", suffix: "" },
-  { key: "urgentPatients", label: "Cas prioritaires", icon: AlertTriangle, accent: "from-rose-600 to-orange-500", suffix: "" },
-  { key: "avgWaitingMinutes", label: "Attente moyenne", icon: Waves, accent: "from-emerald-600 to-teal-500", suffix: " min" },
+  { key: "totalPatients", label: "Patients suivis", icon: UserPlus, accent: "from-slate-950 to-slate-700", suffix: "", filter: "all", helper: "Ouvrir la file complète", cta: "Voir tous" },
+  { key: "waitingPatients", label: "Non encore traités", icon: Clock3, accent: "from-blue-600 to-cyan-500", suffix: "", filter: "pending", helper: "Afficher la file en attente", cta: "Voir en attente" },
+  { key: "urgentPatients", label: "Cas prioritaires", icon: AlertTriangle, accent: "from-rose-600 to-orange-500", suffix: "", filter: "urgent", helper: "Accès rapide aux urgences", cta: "Voir urgences" },
+  { key: "avgWaitingMinutes", label: "Attente moyenne", icon: Waves, accent: "from-emerald-600 to-teal-500", suffix: " min", filter: "long_wait", helper: "Repérer les attentes longues", cta: "Voir attente longue" },
 ];
 
 const signalOptions: Array<{ key: keyof Pick<AssessmentState, "canWalk" | "hasBleeding" | "hasSevereBleeding" | "hasBreathingDifficulty" | "hasChestPain" | "hasNeurologicalDeficit" | "hasLossOfConsciousness" | "hasHighFever" | "hasTrauma" | "isPregnant">; label: string; helper: string }> = [
@@ -494,6 +499,7 @@ function StaffPage() {
     return "overview";
   }, [matchStaffBoard, matchStaffNew, matchStaffProtocols]);
   const [staffSection, setStaffSection] = useState<"identity" | "clinical" | "capacity" | "priority">("identity");
+  const [dashboardQuickFilter, setDashboardQuickFilter] = useState<DashboardQuickFilter>("all");
 
   const dashboard = bootstrapQuery.data as StaffBootstrapPayload | undefined;
   const topPriorityCase = dashboard?.cases?.[0] ?? null;
@@ -501,6 +507,48 @@ function StaffPage() {
   const inTreatmentCount = useMemo(() => (dashboard?.cases ?? []).filter((row) => row.status === "en_cours").length, [dashboard?.cases]);
   const treatedCount = useMemo(() => (dashboard?.cases ?? []).filter((row) => row.status === "termine").length, [dashboard?.cases]);
   const pendingStatusCaseId = updateCaseStatusMutation.variables?.triageCaseId;
+  const averageWaitThreshold = Math.max(15, Number(dashboard?.summary?.avgWaitingMinutes ?? 0));
+
+  const filteredCases = useMemo(() => {
+    const cases = dashboard?.cases ?? [];
+    switch (dashboardQuickFilter) {
+      case "pending":
+        return cases.filter((row) => row.status === "en_attente" || row.status === "en_cours");
+      case "urgent":
+        return cases.filter((row) => row.priority === "urgence_vitale" || row.priority === "urgence");
+      case "long_wait":
+        return cases.filter((row) => row.waitingTimeMinutes >= averageWaitThreshold);
+      default:
+        return cases;
+    }
+  }, [averageWaitThreshold, dashboard?.cases, dashboardQuickFilter]);
+
+  const filteredActivePatients = useMemo(() => {
+    const activePatients = dashboard?.activePatients ?? [];
+    switch (dashboardQuickFilter) {
+      case "pending":
+        return activePatients.filter((row) => row.status === "en_attente" || row.status === "en_cours");
+      case "urgent":
+        return activePatients.filter((row) => row.priority === "urgence_vitale" || row.priority === "urgence");
+      case "long_wait":
+        return activePatients.filter((row) => row.waitingTimeMinutes >= averageWaitThreshold);
+      default:
+        return activePatients;
+    }
+  }, [averageWaitThreshold, dashboard?.activePatients, dashboardQuickFilter]);
+
+  const quickFilterMeta = useMemo(() => {
+    switch (dashboardQuickFilter) {
+      case "pending":
+        return { title: "File des patients non encore traités", description: "Patients en attente ou déjà pris en charge mais non encore clôturés." };
+      case "urgent":
+        return { title: "File des cas prioritaires", description: "Patients urgents ou en urgence vitale à traiter en premier." };
+      case "long_wait":
+        return { title: "File des attentes longues", description: `Patients dont l’attente atteint au moins ${averageWaitThreshold} minutes.` };
+      default:
+        return { title: "Tableau de bord des patients", description: "Vue temps réel des patients non encore traités, des admissions P1 et des dossiers issus du formulaire patient." };
+    }
+  }, [averageWaitThreshold, dashboardQuickFilter]);
 
   async function handleIdentityFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -714,6 +762,11 @@ function StaffPage() {
     await updateCaseStatusMutation.mutateAsync({ triageCaseId, status });
   }
 
+  function handleDashboardCardClick(filter: DashboardQuickFilter) {
+    setDashboardQuickFilter(filter);
+    setLocation("/staff/tableau-de-bord");
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -806,19 +859,36 @@ function StaffPage() {
               <div className="grid auto-rows-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2">
                 {statCards.map((card) => {
                   const value = dashboard?.summary?.[card.key] ?? 0;
+                  const isActiveCard = dashboardQuickFilter === card.filter;
                   return (
-                      <Card key={card.key} className="rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur">
-                      <CardContent className="flex h-full min-h-[10.6rem] flex-col p-4 sm:p-5">
-                        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
-                          <card.icon className="h-4.5 w-4.5" />
-                        </div>
-                        <p className="mt-2.5 text-sm text-slate-500">{card.label}</p>
-                        <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
-                          {value}
-                          {card.suffix}
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <button
+                      key={card.key}
+                      type="button"
+                      onClick={() => handleDashboardCardClick(card.filter)}
+                      className={`text-left transition-transform duration-200 ${isActiveCard ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
+                    >
+                      <Card className={`rounded-[1.35rem] border-white/70 bg-white/82 shadow-[0_16px_36px_rgba(15,23,42,0.055)] backdrop-blur transition-all ${isActiveCard ? "ring-2 ring-slate-900/10 shadow-[0_22px_46px_rgba(15,23,42,0.09)]" : "hover:shadow-[0_22px_46px_rgba(15,23,42,0.09)]"}`}>
+                        <CardContent className="flex h-full min-h-[11.8rem] flex-col p-4 sm:p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-gradient-to-br ${card.accent} text-white shadow-lg`}>
+                              <card.icon className="h-4.5 w-4.5" />
+                            </div>
+                            <Badge variant="outline" className="rounded-full border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] text-slate-500">
+                              {isActiveCard ? "Filtre actif" : "Accès rapide"}
+                            </Badge>
+                          </div>
+                          <p className="mt-3 text-sm text-slate-500">{card.label}</p>
+                          <p className="mt-1 text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[1.75rem]">
+                            {value}
+                            {card.suffix}
+                          </p>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">{card.helper}</p>
+                          <div className="mt-auto pt-4 text-sm font-medium text-slate-900">
+                            {card.cta} <ChevronRight className="ml-1 inline h-4 w-4" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </button>
                   );
                 })}
               </div>
@@ -826,7 +896,7 @@ function StaffPage() {
                 <CardContent className="space-y-3 p-4 sm:p-5">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement.</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">Les patients non encore traités regroupent les statuts en attente et en cours de traitement. Touchez une carte au-dessus pour filtrer instantanément la file active.</p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3">
                     <div className="rounded-2xl bg-slate-50 p-3">
@@ -1130,11 +1200,21 @@ function StaffPage() {
                     <Badge className="rounded-full bg-slate-950 px-3 py-1 text-white hover:bg-slate-950">File active</Badge>
                     <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Tri par priorité et attente</Badge>
                   </div>
-                  <CardTitle className="mt-4 text-2xl text-slate-950">Tableau de bord des patients</CardTitle>
-                  <CardDescription className="text-base leading-7 text-slate-600">Vue temps réel des patients non encore traités, des admissions P1 et des dossiers issus du formulaire patient.</CardDescription>
+                  <CardTitle className="mt-4 text-2xl text-slate-950">{quickFilterMeta.title}</CardTitle>
+                  <CardDescription className="text-base leading-7 text-slate-600">{quickFilterMeta.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto px-5 pb-5 sm:px-7 sm:pb-7">
+                    <div className="mb-4 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-3 py-1 text-slate-600">
+                        {dashboardQuickFilter === "all" ? "Vue complète" : "Vue filtrée"}
+                      </Badge>
+                      {dashboardQuickFilter !== "all" ? (
+                        <Button type="button" size="sm" variant="outline" className="rounded-xl bg-white" onClick={() => setDashboardQuickFilter("all")}>
+                          Réinitialiser le filtre
+                        </Button>
+                      ) : null}
+                    </div>
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1148,7 +1228,7 @@ function StaffPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(dashboard?.cases ?? []).map((row: DashboardCase) => (
+                        {filteredCases.map((row: DashboardCase) => (
                           <TableRow key={row.triageCaseId}>
                             <TableCell>
                               <div className="space-y-2">
@@ -1305,7 +1385,7 @@ function StaffPage() {
             <CardDescription>Vue condensée des admissions en cours pour usage terrain.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {(dashboard?.activePatients ?? []).map((row: ActivePatient) => (
+            {filteredActivePatients.map((row: ActivePatient) => (
               <div key={row.triageCaseId} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
