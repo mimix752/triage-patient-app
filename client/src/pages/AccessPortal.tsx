@@ -197,12 +197,12 @@ export default function AccessPortal() {
                 <div className="rounded-[1.4rem] border border-emerald-200/80 bg-white/88 p-4 text-sm leading-6 text-slate-700">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Lien patient</p>
                   {patientUrl ? (
-                    <a
-                      href={patientUrl}
-                      className="mt-3 block break-all rounded-[1rem] border border-emerald-100 bg-emerald-50 px-4 py-3 font-medium text-emerald-800 underline-offset-4 transition hover:bg-emerald-100 hover:underline"
-                    >
-                      {patientUrl}
-                    </a>
+                    <>
+                      {/* Doublon retiré vers la destination commune `patientUrl` : le lien cliquable a été supprimé ici pour conserver un seul accès visible via le bouton "Entrée patient" plus haut dans la page. */}
+                      <p className="mt-3 break-all rounded-[1rem] border border-emerald-100 bg-emerald-50 px-4 py-3 font-medium text-emerald-800">
+                        {patientUrl}
+                      </p>
+                    </>
                   ) : (
                     <p className="mt-3 text-slate-500">Le lien direct du formulaire patient est en cours de préparation.</p>
                   )}
@@ -225,13 +225,10 @@ export default function AccessPortal() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 p-6 pt-0 sm:p-7 sm:pt-0">
+                {/* Doublon retiré vers la destination commune `patientPath` / `patientUrl` : le CTA secondaire de cette carte a été supprimé pour ne conserver qu’une seule entrée patient visible, située plus haut dans le bloc principal. */}
                 <div className="rounded-[1.25rem] border border-emerald-200 bg-white/85 p-4 text-sm leading-6 text-slate-700">
                   Le patient peut entrer directement dans son formulaire d’arrivée.
                 </div>
-                <Button className="h-11 w-full rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
-                  {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-                  Entrer dans l’espace patient
-                </Button>
               </CardContent>
             </Card>
 

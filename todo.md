@@ -108,3 +108,6 @@
 - [x] Corriger dans AccessPortal.tsx les styles JSX invalides introduits par les dernières retouches visuelles.
 - [x] Fiabiliser la génération et l’affichage du lien patient pour qu’aucune vue du portail n’expose 127.0.0.1 comme URL partageable.
 - [x] Ajouter le compte personnel `salma@gmail.com` avec le mot de passe fourni pour permettre l’authentification à l’espace personnel.
+- [x] Auditer la page d’accueil pour identifier les liens, boutons et cartes cliquables en doublon vers une même destination, puis ne conserver qu’une seule entrée visible par route.
+- [x] Corriger la régression visuelle de la carte « Espace patient » sur la page d’accueil après la suppression des doublons de navigation, afin de conserver une seule action visible sans laisser de zone vide.
+- [x] Supprimer le rappel textuel redondant restant dans la carte « Espace patient » de la page d’accueil afin de ne conserver qu’une seule entrée patient visible sans alourdir la composition.
