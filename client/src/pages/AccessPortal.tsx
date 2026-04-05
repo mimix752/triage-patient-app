@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Stethoscope,
   UserCog,
-  Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "react-qr-code";
@@ -157,26 +156,16 @@ export default function AccessPortal() {
               </div>
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Ouverture rapide</p>
-                <div className="grid gap-3">
-                  <Button className="h-auto w-full justify-start whitespace-normal rounded-[1.5rem] bg-emerald-600 px-5 py-3.5 text-left text-white shadow-[0_14px_30px_rgba(5,150,105,0.18)] transition-all hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-[0_20px_38px_rgba(5,150,105,0.22)]" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
-                    <div className="flex w-full min-w-0 items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold">Entrée patient</p>
-                        <p className="mt-1 text-sm leading-6 text-emerald-50/95">Formulaire d’arrivée immédiat, sans identifiants, avec photo, scan et symptômes.</p>
-                      </div>
-                      {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin" /> : <QrCode className="mt-0.5 h-5 w-5 shrink-0" />}
+                {/* Doublon retiré vers la destination commune `handleStaffShortcut` / accès personnel : le bouton secondaire du bloc principal a été supprimé pour ne conserver qu’un seul accès personnel visible dans la carte dédiée à droite. */}
+                <Button className="h-auto w-full justify-start whitespace-normal rounded-[1.5rem] bg-emerald-600 px-5 py-3.5 text-left text-white shadow-[0_14px_30px_rgba(5,150,105,0.18)] transition-all hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-[0_20px_38px_rgba(5,150,105,0.22)]" onClick={handlePatientAccess} disabled={isOpeningPatientSpace || patientEntryQuery.isFetching}>
+                  <div className="flex w-full min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold">Entrée patient</p>
+                      <p className="mt-1 text-sm leading-6 text-emerald-50/95">Formulaire d’arrivée immédiat, sans identifiants, avec photo, scan et symptômes.</p>
                     </div>
-                  </Button>
-                  <Button variant="outline" className="h-auto w-full justify-start whitespace-normal rounded-[1.5rem] border-slate-200 bg-white px-5 py-3.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md" onClick={handleStaffShortcut}>
-                    <div className="flex w-full min-w-0 items-start justify-between gap-3 text-left">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold text-slate-950">Accès personnel</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">Ouverture directe du formulaire sécurisé pour l’admission et le suivi du service.</p>
-                      </div>
-                      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
-                    </div>
-                  </Button>
-                </div>
+                    {isOpeningPatientSpace || patientEntryQuery.isFetching ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin" /> : <QrCode className="mt-0.5 h-5 w-5 shrink-0" />}
+                  </div>
+                </Button>
               </div>
               <div className="grid gap-3 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-stretch">
                 <div className="rounded-[1.4rem] border border-emerald-200/80 bg-white/88 p-4">
@@ -212,25 +201,7 @@ export default function AccessPortal() {
           </Card>
 
           <div className="grid min-w-0 gap-4">
-            <Card className="rounded-[2rem] border-emerald-200/70 bg-emerald-50/80 shadow-[0_24px_70px_rgba(16,185,129,0.12)]">
-              <CardHeader className="space-y-3 p-6 sm:p-7">
-                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-600 text-white">
-                  <Users className="h-6 w-6" />
-                </div>
-                <div>
-                  <CardTitle className="text-[1.85rem] text-slate-950">Espace patient</CardTitle>
-                  <CardDescription className="mt-1 text-[15px] leading-6 text-slate-700">
-                    Les patients accèdent directement au formulaire d’arrivée, sans email ni mot de passe.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6 pt-0 sm:p-7 sm:pt-0">
-                {/* Doublon retiré vers la destination commune `patientPath` / `patientUrl` : le CTA secondaire de cette carte a été supprimé pour ne conserver qu’une seule entrée patient visible, située plus haut dans le bloc principal. */}
-                <div className="rounded-[1.25rem] border border-emerald-200 bg-white/85 p-4 text-sm leading-6 text-slate-700">
-                  Le patient peut entrer directement dans son formulaire d’arrivée.
-                </div>
-              </CardContent>
-            </Card>
+            {/* Rubrique secondaire retirée : l’ancien bloc "Espace patient" dupliquait l’accès déjà exposé dans la carte principale "Accès clinique". */}
 
             <Card className="rounded-[2rem] border-slate-200/80 bg-white/92 shadow-[0_24px_70px_rgba(15,23,42,0.10)]">
               <CardHeader className="space-y-3 p-6 sm:p-7">

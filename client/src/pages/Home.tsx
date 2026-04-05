@@ -1770,14 +1770,22 @@ function StaffPage() {
 }
 
 function PatientPage({ token }: { token: string }) {
-  const [intakeMethod, setIntakeMethod] = useState<IntakeMethod>("manuel");
+  const [patientSection, setPatientSection] = useState<"manuel" | "ocr" | "vocal" | "camera">("manuel");
   const [preferredLanguage, setPreferredLanguage] = useState("fr");
-  const [identity, setIdentity] = useState<IdentityState>(initialIdentityState);
-  const [assessment, setAssessment] = useState<AssessmentState>(initialAssessmentState);
   const [mobileNumber, setMobileNumber] = useState("");
   const [notes, setNotes] = useState("");
+  const [manualForm, setManualForm] = useState({
+    firstName: "",
+    lastName: "",
+    age: "",
+    sex: "",
+    symptoms: "",
+    painLevel: 4,
+    medicalHistory: "",
+  });
   const [identityFileName, setIdentityFileName] = useState("");
   const [identityImageDataUrl, setIdentityImageDataUrl] = useState("");
+  const [voiceIdentity, setVoiceIdentity] = useState<IdentityState>(initialIdentityState);
   const [voiceAudioDataUrl, setVoiceAudioDataUrl] = useState("");
   const [voiceTranscriptText, setVoiceTranscriptText] = useState("");
   const [voiceFileName, setVoiceFileName] = useState("");
@@ -1796,16 +1804,39 @@ function PatientPage({ token }: { token: string }) {
   const submitMutation = trpc.triage.submitPatientCase.useMutation({
     onSuccess: () => {
       toast.success("Votre demande a été transmise à l’équipe soignante.");
-      setIdentity(initialIdentityState);
-      setAssessment(initialAssessmentState);
+      setManualForm({
+        firstName: "",
+        lastName: "",
+        age: "",
+        sex: "",
+        symptoms: "",
+        painLevel: 4,
+        medicalHistory: "",
+      });
       setMobileNumber("");
       setNotes("");
       setIdentityFileName("");
       setIdentityImageDataUrl("");
+      setVoiceIdentity(initialIdentityState);
       setVoiceAudioDataUrl("");
       setVoiceTranscriptText("");
       setVoiceFileName("");
       setCameraAlertSummary("");
+      if (isRecording) {
+        mediaRecorderRef.current?.stop();
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+      }
+      if (cameraIntervalRef.current) {
+        window.clearInterval(cameraIntervalRef.current);
+        cameraIntervalRef.current = null;
+      }
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = null;
+      }
+      setCameraEnabled(false);
     },
     onError: (error: unknown) =>
       toast.error(error instanceof Error ? error.message : "Une erreur est survenue."),
@@ -1815,7 +1846,7 @@ function PatientPage({ token }: { token: string }) {
     onSuccess: (result) => {
       setVoiceTranscriptText(result.mergedTranscript);
       setPreferredLanguage(result.detectedLanguage || preferredLanguage);
-      setIdentity((current) => ({
+      setVoiceIdentity((current) => ({
         firstName: current.firstName || result.identityDraft.firstName || "",
         lastName: current.lastName || result.identityDraft.lastName || "",
         dateOfBirth: current.dateOfBirth || result.identityDraft.dateOfBirth || "",
@@ -1847,6 +1878,60 @@ function PatientPage({ token }: { token: string }) {
       }
     };
   }, []);
+
+  function stopVoiceRecording() {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+  }
+
+  function stopPatientCameraMonitoring() {
+    if (cameraIntervalRef.current) {
+      window.clearInterval(cameraIntervalRef.current);
+      cameraIntervalRef.current = null;
+    }
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraEnabled(false);
+  }
+
+  function handlePatientSectionChange(nextSection: "manuel" | "ocr" | "vocal" | "camera") {
+    if (nextSection !== "vocal" && isRecording) {
+      stopVoiceRecording();
+    }
+    if (nextSection !== "camera" && cameraEnabled) {
+      stopPatientCameraMonitoring();
+    }
+    setPatientSection(nextSection);
+  }
+
+  function buildApproxDateOfBirthFromAge(ageValue: string) {
+    const parsedAge = Number(ageValue.trim());
+    if (!Number.isFinite(parsedAge) || parsedAge < 0 || parsedAge > 130) {
+      return "";
+    }
+    const approximatedYear = new Date().getFullYear() - Math.floor(parsedAge);
+    return `${approximatedYear}-01-01`;
+  }
+
+  function buildChiefComplaintFromText(text: string, fallback: string) {
+    const firstSentence = text
+      .split(/[.!?\n]/)
+      .map((entry) => entry.trim())
+      .find(Boolean);
+    return firstSentence || fallback;
+  }
+
+  function updateManualForm<K extends keyof typeof manualForm>(key: K, value: (typeof manualForm)[K]) {
+    setManualForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateVoiceIdentity<K extends keyof IdentityState>(key: K, value: IdentityState[K]) {
+    setVoiceIdentity((current) => ({ ...current, [key]: value }));
+  }
 
   async function handleIdentityFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -1911,11 +1996,6 @@ function PatientPage({ token }: { token: string }) {
     }
   }
 
-  function stopVoiceRecording() {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-  }
-
   async function startPatientCameraMonitoring() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
@@ -1939,12 +2019,13 @@ function PatientPage({ token }: { token: string }) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
         await analyzePatientCameraFrameMutation.mutateAsync({
+          token,
           terminalLabel: bootstrapQuery.data?.link?.label || "Borne patient",
           preferredLanguage,
           imageDataUrl: dataUrl,
-          identity,
+          identity: {},
           mobileNumber,
-          notes,
+          notes: "Détection visuelle autonome depuis la section Caméra.",
         });
       }, 12000);
       toast.success("Caméra patient activée.");
@@ -1953,64 +2034,115 @@ function PatientPage({ token }: { token: string }) {
     }
   }
 
-  function stopPatientCameraMonitoring() {
-    if (cameraIntervalRef.current) {
-      window.clearInterval(cameraIntervalRef.current);
-      cameraIntervalRef.current = null;
-    }
-    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
-    cameraStreamRef.current = null;
-    if (cameraVideoRef.current) {
-      cameraVideoRef.current.srcObject = null;
-    }
-    setCameraEnabled(false);
-  }
+  async function submitPatientForm(section: IntakeMethod) {
+    if (section === "manuel") {
+      const approximatedDateOfBirth = buildApproxDateOfBirthFromAge(manualForm.age);
+      if (!manualForm.firstName.trim() || !manualForm.lastName.trim() || !manualForm.age.trim() || !manualForm.sex) {
+        toast.error("Veuillez compléter nom, prénom, âge et sexe dans la section manuelle.");
+        return;
+      }
+      if (!approximatedDateOfBirth) {
+        toast.error("Veuillez saisir un âge valide.");
+        return;
+      }
+      if (!manualForm.symptoms.trim()) {
+        toast.error("Veuillez décrire les symptômes dans la section manuelle.");
+        return;
+      }
 
-  function updateIdentity<K extends keyof IdentityState>(key: K, value: IdentityState[K]) {
-    setIdentity((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateAssessment<K extends keyof AssessmentState>(key: K, value: AssessmentState[K]) {
-    setAssessment((current) => ({ ...current, [key]: value }));
-  }
-
-  async function submitPatientForm() {
-    if (!assessment.chiefComplaint || !assessment.symptomSummary) {
-      toast.error("Veuillez compléter le motif et le résumé des symptômes.");
+      await submitMutation.mutateAsync({
+        token,
+        intakeMethod: "manuel",
+        identity: {
+          firstName: manualForm.firstName.trim(),
+          lastName: manualForm.lastName.trim(),
+          dateOfBirth: approximatedDateOfBirth,
+          socialSecurityNumber: "",
+        },
+        preferredLanguage,
+        mobileNumber,
+        notes: [
+          `Âge déclaré: ${manualForm.age.trim()} ans`,
+          `Sexe déclaré: ${manualForm.sex}`,
+          manualForm.medicalHistory.trim() ? `Antécédents: ${manualForm.medicalHistory.trim()}` : "",
+          notes.trim(),
+        ]
+          .filter(Boolean)
+          .join(" | "),
+        assessment: {
+          ...initialAssessmentState,
+          chiefComplaint: buildChiefComplaintFromText(manualForm.symptoms, "Déclaration manuelle du patient"),
+          symptomSummary: manualForm.symptoms.trim(),
+          painLevel: manualForm.painLevel,
+          oxygenSaturation: parseNullableNumber(initialAssessmentState.oxygenSaturation),
+          heartRate: parseNullableNumber(initialAssessmentState.heartRate),
+          respiratoryRate: parseNullableNumber(initialAssessmentState.respiratoryRate),
+          systolicBloodPressure: parseNullableNumber(initialAssessmentState.systolicBloodPressure),
+        },
+      });
       return;
     }
 
-    if (intakeMethod === "ocr" && !identityImageDataUrl) {
-      toast.error("Veuillez ajouter votre pièce d’identité.");
+    if (section === "ocr") {
+      if (!identityImageDataUrl) {
+        toast.error("Veuillez ajouter un document dans la section Scan.");
+        return;
+      }
+
+      await submitMutation.mutateAsync({
+        token,
+        intakeMethod: "ocr",
+        identity: initialIdentityState,
+        identityImageDataUrl,
+        preferredLanguage,
+        mobileNumber,
+        notes: [
+          identityFileName ? `Document scanné: ${identityFileName}` : "Document scanné transmis au staff.",
+          "Envoi depuis la section Scan.",
+        ].join(" | "),
+        assessment: {
+          ...initialAssessmentState,
+          chiefComplaint: "Document patient scanné",
+          symptomSummary: identityFileName
+            ? `Document d’identité ou de couverture médicale transmis : ${identityFileName}.`
+            : "Document patient transmis depuis la section Scan.",
+          painLevel: 0,
+          oxygenSaturation: parseNullableNumber(initialAssessmentState.oxygenSaturation),
+          heartRate: parseNullableNumber(initialAssessmentState.heartRate),
+          respiratoryRate: parseNullableNumber(initialAssessmentState.respiratoryRate),
+          systolicBloodPressure: parseNullableNumber(initialAssessmentState.systolicBloodPressure),
+        },
+      });
       return;
     }
 
-    if (intakeMethod === "vocal" && !voiceTranscriptText.trim()) {
-      toast.error("Veuillez lancer la transcription vocale temps réel.");
+    if (!voiceTranscriptText.trim()) {
+      toast.error("Veuillez lancer la saisie vocale dans la section Voix.");
       return;
     }
-
-    if (intakeMethod === "manuel" && (!identity.firstName || !identity.lastName || !identity.dateOfBirth)) {
-      toast.error("Veuillez renseigner votre identité minimale.");
+    if (!voiceIdentity.firstName.trim() || !voiceIdentity.lastName.trim() || !voiceIdentity.dateOfBirth.trim()) {
+      toast.error("Veuillez vérifier les champs préremplis par la voix avant l’envoi au staff.");
       return;
     }
 
     await submitMutation.mutateAsync({
       token,
-      intakeMethod,
-      identity,
-      identityImageDataUrl: identityImageDataUrl || undefined,
+      intakeMethod: "vocal",
+      identity: voiceIdentity,
       voiceAudioDataUrl: voiceAudioDataUrl || undefined,
       voiceTranscriptText: voiceTranscriptText || undefined,
       preferredLanguage,
       mobileNumber,
-      notes,
+      notes: [voiceFileName ? `Capture audio: ${voiceFileName}` : "", "Envoi depuis la section Voix."].filter(Boolean).join(" | "),
       assessment: {
-        ...assessment,
-        oxygenSaturation: parseNullableNumber(assessment.oxygenSaturation),
-        heartRate: parseNullableNumber(assessment.heartRate),
-        respiratoryRate: parseNullableNumber(assessment.respiratoryRate),
-        systolicBloodPressure: parseNullableNumber(assessment.systolicBloodPressure),
+        ...initialAssessmentState,
+        chiefComplaint: buildChiefComplaintFromText(voiceTranscriptText, "Déclaration vocale du patient"),
+        symptomSummary: voiceTranscriptText.trim(),
+        painLevel: 4,
+        oxygenSaturation: parseNullableNumber(initialAssessmentState.oxygenSaturation),
+        heartRate: parseNullableNumber(initialAssessmentState.heartRate),
+        respiratoryRate: parseNullableNumber(initialAssessmentState.respiratoryRate),
+        systolicBloodPressure: parseNullableNumber(initialAssessmentState.systolicBloodPressure),
       },
     });
   }
@@ -2029,7 +2161,7 @@ function PatientPage({ token }: { token: string }) {
             Enregistrez rapidement votre arrivée à la clinique.
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
-            Renseignez votre identité, votre motif de consultation et, si besoin, activez la caméra de sécurité clinique depuis cet espace patient.
+            Choisissez un module indépendant pour transmettre votre arrivée : saisie manuelle, scan, voix ou caméra de détection visuelle.
           </p>
           {bootstrap?.link ? (
             <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
@@ -2047,111 +2179,166 @@ function PatientPage({ token }: { token: string }) {
         <Card className="rounded-[1.9rem] border-white/70 bg-white/90 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
           <CardHeader>
             <CardTitle className="text-2xl text-slate-950">Admission patient</CardTitle>
-            <CardDescription className="text-base leading-7 text-slate-600">Choisissez votre mode de saisie, puis complétez uniquement les informations nécessaires à votre accueil.</CardDescription>
+            <CardDescription className="text-base leading-7 text-slate-600">Les quatre sections sont séparées. Ouvrez explicitement l’onglet souhaité pour n’activer que le module correspondant.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Tabs value={intakeMethod} onValueChange={(value) => setIntakeMethod(value as IntakeMethod)}>
-              <TabsList className="grid h-auto w-full grid-cols-3 rounded-2xl bg-slate-100 p-1">
+            <Tabs value={patientSection} onValueChange={(value) => handlePatientSectionChange(value as "manuel" | "ocr" | "vocal" | "camera")}>
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-[1.7rem] bg-slate-100 p-2 sm:grid-cols-4">
                 <TabsTrigger value="manuel" className="rounded-2xl py-3">Manuel</TabsTrigger>
                 <TabsTrigger value="ocr" className="rounded-2xl py-3">Scan</TabsTrigger>
                 <TabsTrigger value="vocal" className="rounded-2xl py-3">Voix</TabsTrigger>
+                <TabsTrigger value="camera" className="rounded-2xl py-3">Caméra</TabsTrigger>
               </TabsList>
 
-                    <TabsContent value="ocr" className="mt-5">
-                <div className="rounded-[1.6rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><FileBadge className="h-5 w-5" /></div>
-                    <div>
-                      <h3 className="text-base font-semibold text-slate-900">Carte d’identité</h3>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">Vous pouvez téléverser votre document ou prendre une photo avec la caméra de votre téléphone.</p>
-                    </div>
+              <TabsContent value="manuel" className="mt-6">
+                <div className="rounded-[1.7rem] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-slate-950">Section A — Manuel</h3>
+                    <p className="text-sm leading-6 text-slate-600">Cette section contient uniquement le formulaire de saisie manuelle des informations patient.</p>
                   </div>
-                  <div className="mt-5 grid gap-3 lg:grid-cols-2">
-                    <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-medium text-slate-900">Téléverser un fichier</p>
-                      <Input type="file" accept="image/*" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
-                    </div>
-                    <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-medium text-slate-900">Prendre une photo</p>
-                      <Input type="file" accept="image/*" capture="environment" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
-                    </div>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="space-y-2"><Label>Nom</Label><Input value={manualForm.lastName} onChange={(event) => updateManualForm("lastName", event.target.value)} className="rounded-2xl bg-white" /></div>
+                    <div className="space-y-2"><Label>Prénom</Label><Input value={manualForm.firstName} onChange={(event) => updateManualForm("firstName", event.target.value)} className="rounded-2xl bg-white" /></div>
+                    <div className="space-y-2"><Label>Âge</Label><Input type="number" min={0} max={130} value={manualForm.age} onChange={(event) => updateManualForm("age", event.target.value)} className="rounded-2xl bg-white" /></div>
+                    <div className="space-y-2"><Label>Sexe</Label><Select value={manualForm.sex} onValueChange={(value) => updateManualForm("sex", value)}><SelectTrigger className="rounded-2xl bg-white"><SelectValue placeholder="Choisir" /></SelectTrigger><SelectContent><SelectItem value="femme">Femme</SelectItem><SelectItem value="homme">Homme</SelectItem><SelectItem value="autre">Autre</SelectItem><SelectItem value="non_precise">Préfère ne pas préciser</SelectItem></SelectContent></Select></div>
                   </div>
-                  {identityFileName ? <p className="mt-3 text-sm text-slate-500">Document sélectionné : {identityFileName}</p> : null}
+                  <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
+                    <div className="space-y-2"><Label>Symptômes décrits</Label><Textarea value={manualForm.symptoms} onChange={(event) => updateManualForm("symptoms", event.target.value)} className="min-h-[160px] rounded-2xl bg-white" placeholder="Décrivez les symptômes, leur début et ce qui vous inquiète." /></div>
+                    <div className="space-y-2"><Label>Niveau de douleur</Label><Input type="number" min={0} max={10} value={manualForm.painLevel} onChange={(event) => updateManualForm("painLevel", Number(event.target.value || 0))} className="rounded-2xl bg-white" /></div>
+                  </div>
+                  <div className="mt-4 space-y-2"><Label>Antécédents si pertinent</Label><Textarea value={manualForm.medicalHistory} onChange={(event) => updateManualForm("medicalHistory", event.target.value)} className="min-h-[120px] rounded-2xl bg-white" placeholder="Allergies, traitement en cours, grossesse, antécédents ou autre précision utile." /></div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2"><Label>Langue</Label><Select value={preferredLanguage} onValueChange={setPreferredLanguage}><SelectTrigger className="rounded-2xl bg-white"><SelectValue placeholder="Choisir" /></SelectTrigger><SelectContent><SelectItem value="fr">Français</SelectItem><SelectItem value="ar">Arabe</SelectItem><SelectItem value="darija">Darija</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-2"><Label>Téléphone</Label><Input value={mobileNumber} onChange={(event) => setMobileNumber(event.target.value)} className="rounded-2xl bg-white" /></div>
+                  </div>
+                  <div className="mt-4 space-y-2"><Label>Note optionnelle</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} className="rounded-2xl bg-white" placeholder="Précision utile pour l’accueil" /></div>
+                  <Button className="mt-6 h-12 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => submitPatientForm("manuel")} disabled={submitMutation.isPending || bootstrapQuery.isLoading}>
+                    {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="mr-2 h-4 w-4" />}Envoyer le formulaire au staff
+                  </Button>
                 </div>
               </TabsContent>
 
-
-              <TabsContent value="vocal" className="mt-5">
-                <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50/70 p-5">
-                  <div className="flex flex-wrap gap-3">
-                    <Button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
-                      {isRecording ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                      {isRecording ? "Arrêter le live" : "Parler maintenant"}
-                    </Button>
-                    <div className="rounded-2xl border border-white/70 bg-white px-4 py-2 text-sm text-slate-600">
-                      {isLiveTranscribing ? "Transcription en cours…" : voiceTranscriptText ? "Transcription disponible." : "Le texte apparaîtra ici automatiquement."}
+              <TabsContent value="ocr" className="mt-6">
+                <div className="rounded-[1.7rem] border border-emerald-200 bg-emerald-50/55 p-5 sm:p-6">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-slate-950">Section B — Scan</h3>
+                    <p className="text-sm leading-6 text-slate-600">Cette section contient uniquement la fonctionnalité de scan de document et son résultat.</p>
+                  </div>
+                  <div className="mt-6 grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-[1.3rem] border border-emerald-200 bg-white p-4">
+                      <p className="text-sm font-medium text-slate-900">Téléverser un document</p>
+                      <Input type="file" accept="image/*" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
+                    </div>
+                    <div className="rounded-[1.3rem] border border-emerald-200 bg-white p-4">
+                      <p className="text-sm font-medium text-slate-900">Prendre une photo du document</p>
+                      <Input type="file" accept="image/*" capture="environment" onChange={handleIdentityFile} className="mt-3 rounded-2xl bg-white" />
                     </div>
                   </div>
-                  <Textarea value={voiceTranscriptText} onChange={(event) => setVoiceTranscriptText(event.target.value)} className="mt-4 min-h-[140px] rounded-2xl bg-white" placeholder="Parlez clairement, votre texte sera retranscrit au fil de la saisie." />
+                  <div className="mt-5 rounded-[1.4rem] border border-emerald-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-900">Résultat du scan</p>
+                    {identityImageDataUrl ? (
+                      <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
+                        <img src={identityImageDataUrl} alt="Prévisualisation du document patient scanné" className="aspect-[4/3] w-full rounded-[1.1rem] border border-slate-200 object-cover" />
+                        <div className="rounded-[1.1rem] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
+                          <p className="font-medium">Document reçu</p>
+                          <p className="mt-1">{identityFileName || "Document prêt pour analyse côté staff."}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm leading-6 text-slate-600">Aucun document scanné pour le moment.</p>
+                    )}
+                  </div>
+                  <Button variant="outline" className="mt-6 h-12 w-full rounded-2xl border-emerald-200 bg-white hover:bg-emerald-50" onClick={() => submitPatientForm("ocr")} disabled={submitMutation.isPending || bootstrapQuery.isLoading || !identityImageDataUrl}>
+                    {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileBadge className="mr-2 h-4 w-4" />}Transmettre le scan au staff
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="vocal" className="mt-6">
+                <div className="rounded-[1.7rem] border border-amber-200 bg-amber-50/60 p-5 sm:p-6">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-slate-950">Section C — Voix</h3>
+                    <p className="text-sm leading-6 text-slate-600">Le micro s’active seulement ici. La transcription et les champs préremplis restent dans cette section uniquement.</p>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
+                      {isRecording ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                      {isRecording ? "Arrêter l’enregistrement" : "Démarrer l’enregistrement"}
+                    </Button>
+                    <div className="rounded-2xl border border-white/70 bg-white px-4 py-2 text-sm text-slate-600">
+                      {isLiveTranscribing ? "Transcription en cours…" : voiceTranscriptText ? "Transcription disponible." : "Le texte apparaîtra ici après la prise de voix."}
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                    <Textarea value={voiceTranscriptText} onChange={(event) => setVoiceTranscriptText(event.target.value)} className="min-h-[210px] rounded-2xl bg-white" placeholder="Parlez clairement. Le système retranscrit ici la déclaration du patient ou du soignant." />
+                    <div className="rounded-[1.4rem] border border-white/80 bg-white p-4">
+                      <p className="text-sm font-semibold text-slate-900">Champs préremplis par la voix</p>
+                      <div className="mt-4 grid gap-3">
+                        <div className="space-y-2"><Label>Prénom détecté</Label><Input value={voiceIdentity.firstName} onChange={(event) => updateVoiceIdentity("firstName", event.target.value)} className="rounded-2xl bg-white" /></div>
+                        <div className="space-y-2"><Label>Nom détecté</Label><Input value={voiceIdentity.lastName} onChange={(event) => updateVoiceIdentity("lastName", event.target.value)} className="rounded-2xl bg-white" /></div>
+                        <div className="space-y-2"><Label>Date de naissance détectée</Label><Input value={voiceIdentity.dateOfBirth} onChange={(event) => updateVoiceIdentity("dateOfBirth", event.target.value)} className="rounded-2xl bg-white" placeholder="YYYY-MM-DD" /></div>
+                        <div className="space-y-2"><Label>Numéro d’identité détecté</Label><Input value={voiceIdentity.socialSecurityNumber} onChange={(event) => updateVoiceIdentity("socialSecurityNumber", event.target.value)} className="rounded-2xl bg-white" /></div>
+                      </div>
+                    </div>
+                  </div>
+                  {voiceFileName ? <p className="mt-4 text-sm text-slate-600">Dernier fichier audio capturé : {voiceFileName}</p> : null}
+                  <Button variant="outline" className="mt-6 h-12 w-full rounded-2xl border-amber-200 bg-white hover:bg-amber-50" onClick={() => submitPatientForm("vocal")} disabled={submitMutation.isPending || bootstrapQuery.isLoading || !voiceTranscriptText.trim()}>
+                    {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic className="mr-2 h-4 w-4" />}Transmettre la transcription au staff
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="camera" className="mt-6">
+                <div className="rounded-[1.7rem] border border-rose-200 bg-rose-50/65 p-5 sm:p-6">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-slate-950">Section D — Caméra</h3>
+                    <p className="text-sm leading-6 text-slate-600">La caméra ne s’active que dans cet onglet. Elle reste complètement isolée des sections Manuel, Scan et Voix.</p>
+                  </div>
+                  <div className="mt-5 rounded-[1.35rem] border border-rose-200 bg-white/85 p-4 text-sm leading-6 text-slate-700">
+                    <p className="font-semibold text-slate-900">Urgences P1 surveillées</p>
+                    <p className="mt-2">Détection visuelle d’évanouissement, hémorragie sévère visible, posture anormale inquiétante ou détresse respiratoire. Si un cas critique est détecté, une fiche patient est créée automatiquement.</p>
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Button type="button" onClick={cameraEnabled ? stopPatientCameraMonitoring : startPatientCameraMonitoring} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
+                      {cameraEnabled ? "Arrêter la caméra" : "Activer la caméra"}
+                    </Button>
+                    <div className="rounded-2xl border border-white/70 bg-white px-4 py-2 text-sm text-slate-600">
+                      {cameraEnabled ? "Surveillance visuelle active." : "Caméra inactive tant que vous ne l’ouvrez pas."}
+                    </div>
+                  </div>
+                  <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                    <video ref={cameraVideoRef} muted playsInline className="aspect-video w-full rounded-[1.4rem] border border-slate-200 bg-slate-950 object-cover" />
+                    <div className="rounded-[1.4rem] border border-white/80 bg-white p-4 text-sm text-slate-600">
+                      <p className="font-medium text-slate-900">Dernière synthèse</p>
+                      <p className="mt-2 leading-6">{cameraAlertSummary || "Aucune situation critique détectée pour l’instant."}</p>
+                      <div className="mt-4 rounded-[1rem] border border-rose-100 bg-rose-50 px-3 py-3 text-sm leading-6 text-rose-900">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                          <p>En cas de détresse vitale immédiate, adressez-vous directement au personnel présent sans attendre l’analyse automatique.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
 
-            <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50/70 p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900">Caméra de sécurité clinique</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Activez la caméra si le patient présente un malaise, une chute, une détresse respiratoire ou un saignement visible afin d’alerter l’équipe plus vite.</p>
-                </div>
-                <Button type="button" onClick={cameraEnabled ? stopPatientCameraMonitoring : startPatientCameraMonitoring} className="rounded-2xl bg-slate-950 text-white hover:bg-slate-800">
-                  {cameraEnabled ? "Arrêter la caméra" : "Activer la caméra"}
-                </Button>
-              </div>
-              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-                <video ref={cameraVideoRef} muted playsInline className="aspect-video w-full rounded-[1.4rem] border border-slate-200 bg-slate-950 object-cover" />
-                <div className="rounded-[1.4rem] border border-white/80 bg-white p-4 text-sm text-slate-600">
-                  <p className="font-medium text-slate-900">Dernière synthèse</p>
-                  <p className="mt-2 leading-6">{cameraAlertSummary || "Aucune situation critique détectée pour l’instant."}</p>
+            {bootstrap?.guidedQuestions?.length ? (
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-5">
+                <p className="mb-3 text-sm font-semibold text-slate-900">Repères d’accueil</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {bootstrap.guidedQuestions.map((question: string) => (
+                    <div key={question} className="rounded-[1.2rem] border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">{question}</div>
+                  ))}
                 </div>
               </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-2"><Label>Prénom</Label><Input value={identity.firstName} onChange={(event) => updateIdentity("firstName", event.target.value)} className="rounded-2xl bg-white" /></div>
-              <div className="space-y-2"><Label>Nom</Label><Input value={identity.lastName} onChange={(event) => updateIdentity("lastName", event.target.value)} className="rounded-2xl bg-white" /></div>
-              <div className="space-y-2"><Label>Date de naissance</Label><Input value={identity.dateOfBirth} onChange={(event) => updateIdentity("dateOfBirth", event.target.value)} className="rounded-2xl bg-white" placeholder="YYYY-MM-DD" /></div>
-              <div className="space-y-2"><Label>Numéro d’identité / sécu</Label><Input value={identity.socialSecurityNumber} onChange={(event) => updateIdentity("socialSecurityNumber", event.target.value)} className="rounded-2xl bg-white" /></div>
-            </div>
-
-            <Separator />
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2"><Label>Motif de consultation</Label><Input value={assessment.chiefComplaint} onChange={(event) => updateAssessment("chiefComplaint", event.target.value)} className="rounded-2xl bg-white" placeholder="Ex. douleur thoracique, chute, fièvre" /></div>
-              <div className="space-y-2 md:col-span-2"><Label>Résumé des symptômes</Label><Textarea value={assessment.symptomSummary} onChange={(event) => updateAssessment("symptomSummary", event.target.value)} className="min-h-[140px] rounded-2xl bg-white" placeholder="Décrivez ce que vous ressentez, depuis quand et ce qui vous inquiète." /></div>
-              <div className="space-y-2"><Label>Niveau de douleur</Label><Input type="number" min={0} max={10} value={assessment.painLevel} onChange={(event) => updateAssessment("painLevel", Number(event.target.value || 0))} className="rounded-2xl bg-white" /></div>
-              <div className="space-y-2"><Label>Langue</Label><Select value={preferredLanguage} onValueChange={setPreferredLanguage}><SelectTrigger className="rounded-2xl bg-white"><SelectValue placeholder="Choisir" /></SelectTrigger><SelectContent><SelectItem value="fr">Français</SelectItem><SelectItem value="ar">Arabe</SelectItem><SelectItem value="darija">Darija</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></div>
-              <div className="space-y-2"><Label>Téléphone</Label><Input value={mobileNumber} onChange={(event) => setMobileNumber(event.target.value)} className="rounded-2xl bg-white" /></div>
-              <div className="space-y-2"><Label>Informations utiles pour l’accueil</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} className="rounded-2xl bg-white" placeholder="Traitement en cours, allergie, accompagnant, autre précision" /></div>
-            </div>
-
-            <div>
-              <p className="mb-3 text-sm font-semibold text-slate-900">Questions guidées</p>
-              <div className="grid gap-3 md:grid-cols-2">
-                {(bootstrap?.guidedQuestions ?? []).map((question: string) => (
-                  <div key={question} className="rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-600">{question}</div>
-                ))}
-              </div>
-            </div>
+            ) : null}
 
             <Alert className="rounded-[1.5rem] border-blue-200 bg-blue-50/80">
               <ShieldCheck className="h-4 w-4" />
               <AlertTitle>Information importante</AlertTitle>
-              <AlertDescription>En cas de détresse vitale immédiate, adressez-vous directement au personnel présent sans attendre la fin du formulaire.</AlertDescription>
+              <AlertDescription>Chaque onglet correspond à un module indépendant. Aucun composant de caméra, de micro ou de scan ne s’active hors de sa propre section.</AlertDescription>
             </Alert>
-
-            <Button className="h-12 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800" onClick={submitPatientForm} disabled={submitMutation.isPending || bootstrapQuery.isLoading}>
-              {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="mr-2 h-4 w-4" />}Envoyer le formulaire au service
-            </Button>
           </CardContent>
         </Card>
       </div>

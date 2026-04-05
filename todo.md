@@ -111,3 +111,11 @@
 - [x] Auditer la page d’accueil pour identifier les liens, boutons et cartes cliquables en doublon vers une même destination, puis ne conserver qu’une seule entrée visible par route.
 - [x] Corriger la régression visuelle de la carte « Espace patient » sur la page d’accueil après la suppression des doublons de navigation, afin de conserver une seule action visible sans laisser de zone vide.
 - [x] Supprimer le rappel textuel redondant restant dans la carte « Espace patient » de la page d’accueil afin de ne conserver qu’une seule entrée patient visible sans alourdir la composition.
+- [x] Supprimer sur la page d’accueil la deuxième rubrique liée à l’espace patient et à l’espace personnel pour alléger l’interface.
+- [x] Restructurer l’espace patient en 4 sections indépendantes : Manuel, Scan, Voix et Caméra.
+- [x] Ajouter une navigation explicite par onglets ou menu pour basculer entre les sections Manuel, Scan, Voix et Caméra.
+- [x] Isoler complètement la section Manuel pour qu’elle contienne uniquement le formulaire patient sans caméra, voix ni scan.
+- [x] Isoler complètement la section Scan pour qu’elle contienne uniquement le scan de documents et l’affichage de son résultat, sans déclencher micro, caméra de détection ni formulaire manuel.
+- [x] Isoler complètement la section Voix pour qu’elle contienne uniquement la reconnaissance vocale avec démarrage et arrêt explicites du micro.
+- [x] Isoler complètement la section Caméra pour qu’elle active uniquement le flux visuel à l’ouverture de cette section et crée automatiquement une fiche patient en cas d’urgence P1 détectée.
+- [x] Retirer le doublon résiduel « Accès personnel » encore visible dans la carte principale de la page d’accueil afin de ne conserver qu’un seul accès personnel à l’écran.
