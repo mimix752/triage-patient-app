@@ -20,13 +20,13 @@
 - [x] Corriger le débordement visuel du hero, réduire l’impact typographique du grand titre et rééquilibrer les cartes KPI sur desktop.
 - [x] Réduire encore la dominance visuelle du titre du hero et rééquilibrer la composition desktop entre texte principal, sous-texte et cartes KPI.
 - [x] Concevoir la version 2 avec deux parcours distincts : personnel soignant avec accès complet et patient avec accès formulaire seul via QR code.
-- [ ] Ajouter un contrôle d’accès différencié pour réserver l’interface complète aux appareils ou comptes du personnel.
+- [x] Ajouter un contrôle d’accès différencié pour réserver l’interface complète aux appareils ou comptes du personnel.
 - [x] Créer une page patient dédiée accessible par QR code pour l’auto-saisie des informations et symptômes.
 - [ ] Étendre le backend avec une IA plus avancée pour l’extraction d’identité, la structuration clinique et l’aide au triage.
 - [x] Ajouter une priorisation manuelle immédiate P1 décidée par le personnel sans passage obligatoire par l’analyse IA.
 - [x] Intégrer dans l’analyse de triage la charge actuelle, le nombre de patients, de médecins et d’infirmiers disponibles.
 - [x] Repenser l’interface en deux pages principales : espace personnel et formulaire patient.
-- [ ] Tester, documenter et livrer la version 2 réaliste du prototype.
+- [x] Tester, documenter et livrer la version 2 réaliste du prototype.
 - [x] Corriger l’erreur de requête `patientFormLinks` qui empêche le chargement de la page personnel après l’introduction du parcours QR patient version 2.
 - [x] Corriger la composition desktop du hero personnel version 2 pour réduire la dominance du titre et mieux équilibrer le bloc éditorial avec les KPI.
 - [x] Compacter davantage le hero desktop, réduire la hauteur perçue des cartes KPI et améliorer l’alignement global du bloc éditorial personnel version 2.
@@ -42,3 +42,8 @@
 - [ ] Ajouter un journal d’audit clinique retraçant recommandations IA, overrides manuels P1 et alertes critiques caméra.
 - [x] Corriger l’erreur "Transcription service request failed" sur la mutation de transcription vocale temps réel depuis la page d’accueil.
 - [x] Corriger la régression persistante de transcription vocale temps réel après le premier correctif MIME, avec stratégie de repli robuste côté serveur.
+- [ ] Documenter la procédure de promotion d’un utilisateur en administrateur dans la base de données.
+- [ ] Expliquer le rôle du fichier d’authentification de l’application demandé par l’utilisateur.
+- [x] Ajouter une page d’entrée avant l’accueil avec deux boutons : espace personnel admin et espace patient.
+- [x] Permettre l’accès à l’espace patient sans email ni mot de passe avec redirection directe.
+- [x] Ajouter un accès personnel avec identification par email admin avant redirection vers l’espace souhaité.

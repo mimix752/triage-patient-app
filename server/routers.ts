@@ -744,14 +744,44 @@ export const appRouter = router({
       return {
         summary,
         staffing,
-        cases,
         notifications,
+        cases,
         formLinks,
         activePatients,
       };
     }),
     guidedQuestions: publicProcedure.query(() => guidedQuestions),
+    publicPatientEntry: publicProcedure.query(async () => {
+      const now = Date.now();
+      const links = await listPatientFormLinks();
+      const activeLink = links.find((link) => {
+        const expiresAt = link.expiresAt ? new Date(link.expiresAt).getTime() : null;
+        return link.isActive && (!expiresAt || expiresAt > now);
+      });
+
+      if (activeLink) {
+        return {
+          link: activeLink,
+          patientPath: `/patient/${activeLink.token}`,
+        };
+      }
+
+      const token = crypto.randomUUID().replace(/-/g, "");
+      const link = await createPatientFormLink({
+        createdByUserId: null,
+        label: "Accès patient direct",
+        token,
+        isActive: true,
+        expiresAt: null,
+      });
+
+      return {
+        link,
+        patientPath: `/patient/${token}`,
+      };
+    }),
     transcribeVoiceLive: publicProcedure
+
       .input(liveTranscriptionSchema)
       .mutation(async ({ input }) => {
         const uploadedAudio = await uploadDataUrl(input.audioDataUrl, `triage/live-transcription/${Date.now()}`);

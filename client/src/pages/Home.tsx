@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +51,12 @@ import {
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
+
+const STAFF_EMAIL_STORAGE_KEY = "triage_staff_admin_email";
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
 
 type IntakeMethod = "ocr" | "manuel" | "vocal";
 type Priority = "urgence_vitale" | "urgence" | "semi_urgence" | "non_urgent";
@@ -330,6 +335,14 @@ function buildStaffingPayload(staffing: StaffingState) {
 function StaffPage() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const expectedAdminEmail = useMemo(
+    () => (typeof window === "undefined" ? "" : normalizeEmail(window.sessionStorage.getItem(STAFF_EMAIL_STORAGE_KEY) || "")),
+    [],
+  );
+  const normalizedUserEmail = normalizeEmail(user?.email || "");
+  const isAuthorizedStaff = Boolean(
+    isAuthenticated && user?.role === "admin" && expectedAdminEmail && normalizedUserEmail === expectedAdminEmail,
+  );
   const [intakeMethod, setIntakeMethod] = useState<IntakeMethod>("ocr");
   const [preferredLanguage, setPreferredLanguage] = useState("fr");
   const [identity, setIdentity] = useState<IdentityState>(initialIdentityState);
@@ -450,6 +463,16 @@ function StaffPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (!isAuthorizedStaff) {
+      setLocation("/");
+    }
+  }, [isAuthorizedStaff, loading, setLocation]);
 
   const [matchStaffNew] = useRoute("/staff/nouveau-dossier");
   const [matchStaffBoard] = useRoute("/staff/tableau-de-bord");
@@ -684,33 +707,28 @@ function StaffPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthorizedStaff) {
     return (
-      <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef6ff_100%)] p-6">
-        <div className="mx-auto flex min-h-[80vh] max-w-5xl items-center justify-center">
-          <Card className="w-full max-w-3xl rounded-[2rem] border-white/70 bg-white/90 shadow-[0_30px_100px_rgba(15,23,42,0.12)]">
-            <CardHeader className="space-y-4 p-8 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-white">
-                <UserCog className="h-8 w-8" />
-              </div>
-              <Badge className="mx-auto rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 hover:bg-emerald-100">
-                Accès personnel soignant
-              </Badge>
-              <CardTitle className="text-3xl text-slate-950">Espace clinique sécurisé</CardTitle>
-              <CardDescription className="mx-auto max-w-2xl text-base leading-7 text-slate-600">
-                Cette page donne un accès complet aux équipes soignantes : triage assisté par IA, ajout manuel P1, pilotage des ressources humaines, génération du QR code patient et supervision du flux d’attente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-4 p-8 pt-0">
-              <Button className="h-12 rounded-2xl bg-slate-950 px-6 text-white hover:bg-slate-800" onClick={() => {
-                window.location.href = getLoginUrl();
-              }}>
-                Se connecter comme personnel
-              </Button>
-              <p className="text-sm text-slate-500">Le formulaire patient public reste séparé et accessible uniquement via lien ou QR code.</p>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+        <Card className="w-full max-w-2xl rounded-[2rem] border-white/80 bg-white/92 shadow-[0_30px_100px_rgba(15,23,42,0.12)]">
+          <CardHeader className="space-y-4 p-8 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-white">
+              <UserCog className="h-8 w-8" />
+            </div>
+            <Badge className="mx-auto rounded-full bg-amber-100 px-3 py-1 text-amber-700 hover:bg-amber-100">
+              Vérification de l’accès personnel
+            </Badge>
+            <CardTitle className="text-3xl text-slate-950">Redirection vers le portail d’entrée</CardTitle>
+            <CardDescription className="mx-auto max-w-xl text-base leading-7 text-slate-600">
+              L’espace personnel nécessite un compte <strong>admin</strong> et un email administrateur validé depuis la page d’entrée. Vous êtes redirigé vers le portail pour choisir votre espace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center p-8 pt-0">
+            <Button className="h-12 rounded-2xl bg-slate-950 px-6 text-white hover:bg-slate-800" onClick={() => setLocation("/")}>
+              Retourner au portail
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

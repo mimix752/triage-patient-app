@@ -14,6 +14,11 @@ import {
   createManualP1Assessment,
 } from "./triage";
 import { shouldIgnoreLiveTranscriptionError } from "./routers";
+import {
+  isAuthorizedStaffAccess,
+  normalizeEmail as normalizeAccessEmail,
+  pickActivePatientEntryLink,
+} from "../shared/accessControl";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -230,6 +235,66 @@ describe("live transcription fallback", () => {
         details: "Voice transcription service authentication is missing",
       }),
     ).toBe(false);
+  });
+});
+
+describe("access portal helpers", () => {
+  it("autorise l’accès personnel uniquement si le compte connecté est admin et correspond à l’email saisi", () => {
+    expect(
+      isAuthorizedStaffAccess({
+        isAuthenticated: true,
+        expectedAdminEmail: "Admin@Hopital.ma ",
+        userEmail: "admin@hopital.ma",
+        userRole: "admin",
+      }),
+    ).toBe(true);
+
+    expect(
+      isAuthorizedStaffAccess({
+        isAuthenticated: true,
+        expectedAdminEmail: "admin@hopital.ma",
+        userEmail: "soignant@hopital.ma",
+        userRole: "admin",
+      }),
+    ).toBe(false);
+
+    expect(
+      isAuthorizedStaffAccess({
+        isAuthenticated: true,
+        expectedAdminEmail: "admin@hopital.ma",
+        userEmail: "admin@hopital.ma",
+        userRole: "user",
+      }),
+    ).toBe(false);
+  });
+
+  it("normalise les emails de contrôle d’accès avant comparaison", () => {
+    expect(normalizeAccessEmail("  Admin@Hopital.ma  ")).toBe("admin@hopital.ma");
+  });
+
+  it("sélectionne un lien patient actif non expiré pour l’accès public direct", () => {
+    const selected = pickActivePatientEntryLink(
+      [
+        { token: "expired", isActive: true, expiresAt: "2026-04-01T10:00:00.000Z" },
+        { token: "inactive", isActive: false, expiresAt: null },
+        { token: "active", isActive: true, expiresAt: "2026-04-10T10:00:00.000Z" },
+      ],
+      new Date("2026-04-05T10:00:00.000Z").getTime(),
+    );
+
+    expect(selected?.token).toBe("active");
+  });
+
+  it("retourne null lorsqu’aucun lien patient public n’est réutilisable", () => {
+    const selected = pickActivePatientEntryLink(
+      [
+        { token: "expired", isActive: true, expiresAt: "2026-04-01T10:00:00.000Z" },
+        { token: "inactive", isActive: false, expiresAt: null },
+      ],
+      new Date("2026-04-05T10:00:00.000Z").getTime(),
+    );
+
+    expect(selected).toBeNull();
   });
 });
 
