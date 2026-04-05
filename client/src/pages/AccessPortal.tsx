@@ -68,6 +68,11 @@ export default function AccessPortal() {
 
   const patientPath = patientEntryQuery.data?.patientPath || "";
   const patientUrl = useMemo(() => {
+    const serverPatientUrl = patientEntryQuery.data?.patientUrl || "";
+    if (serverPatientUrl) {
+      return serverPatientUrl;
+    }
+
     if (typeof window === "undefined" || !patientPath) {
       return "";
     }
@@ -79,7 +84,7 @@ export default function AccessPortal() {
     });
 
     return new URL(patientPath, publicOrigin || window.location.origin).toString();
-  }, [patientPath]);
+  }, [patientEntryQuery.data?.patientUrl, patientPath]);
 
   async function handlePatientAccess() {
     setIsOpeningPatientSpace(true);

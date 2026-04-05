@@ -91,3 +91,6 @@
 - [x] Afficher sur le portail d’authentification un QR code et un lien direct pointant vers le formulaire patient public.
 - [x] Remonter le QR code et le lien direct du formulaire patient sur la page d’authentification pour qu’ils soient visibles sans défilement.
 - [x] Corriger le lien public affiché avec le QR code patient pour qu’il utilise toujours l’URL publique du formulaire patient au lieu de 127.0.0.1.
+- [x] Corriger les boutons latéraux « Accueil service », « Admission patient », « Salle d’attente » et « Protocoles » pour qu’ils ouvrent les bonnes vues cliniques.
+- [x] Corriger définitivement le lien affiché dans la carte QR du portail patient, qui montre encore une adresse locale 127.0.0.1 chez l’utilisateur.
+- [x] Vérifier et fiabiliser les boutons latéraux du tableau de bord staff pour qu’ils ouvrent toujours les bonnes vues cliniques.

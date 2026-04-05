@@ -4,6 +4,14 @@ function isLocalHostname(hostname: string) {
   return LOCAL_HOSTNAMES.has(hostname.toLowerCase());
 }
 
+function firstHeaderValue(value?: string | string[] | null) {
+  if (Array.isArray(value)) {
+    return value[0] || "";
+  }
+
+  return value?.split(",")[0]?.trim() || "";
+}
+
 function parsePublicOrigin(candidate?: string | null) {
   if (!candidate) {
     return null;
@@ -64,4 +72,40 @@ export function resolvePublicOrigin(input: {
   }
 
   return currentOrigin;
+}
+
+export function resolveRequestPublicOrigin(headers: {
+  host?: string | string[] | null;
+  origin?: string | string[] | null;
+  referer?: string | string[] | null;
+  "x-forwarded-host"?: string | string[] | null;
+  "x-forwarded-proto"?: string | string[] | null;
+  "x-forwarded-origin"?: string | string[] | null;
+}) {
+  const forwardedOrigin = parsePublicOrigin(firstHeaderValue(headers["x-forwarded-origin"]));
+  if (forwardedOrigin) {
+    return forwardedOrigin;
+  }
+
+  const originHeader = parsePublicOrigin(firstHeaderValue(headers.origin));
+  if (originHeader) {
+    return originHeader;
+  }
+
+  const refererOrigin = parsePublicOrigin(firstHeaderValue(headers.referer));
+  if (refererOrigin) {
+    return refererOrigin;
+  }
+
+  const forwardedHost = firstHeaderValue(headers["x-forwarded-host"]);
+  const host = forwardedHost || firstHeaderValue(headers.host);
+  const proto = firstHeaderValue(headers["x-forwarded-proto"]) || "https";
+
+  if (!host) {
+    return "";
+  }
+
+  const candidate = `${proto}://${host}`;
+  const publicOrigin = parsePublicOrigin(candidate);
+  return publicOrigin || "";
 }

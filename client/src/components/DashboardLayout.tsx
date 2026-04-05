@@ -37,10 +37,10 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Accueil service", path: "/" },
-  { icon: ClipboardPlus, label: "Admission patient", path: "/nouveau-dossier" },
-  { icon: Activity, label: "Salle d’attente", path: "/tableau-de-bord" },
-  { icon: ShieldAlert, label: "Protocoles", path: "/protocoles" },
+  { icon: LayoutDashboard, label: "Accueil service", path: "/staff" },
+  { icon: ClipboardPlus, label: "Admission patient", path: "/staff/nouveau-dossier" },
+  { icon: Activity, label: "Salle d’attente", path: "/staff/tableau-de-bord" },
+  { icon: ShieldAlert, label: "Protocoles", path: "/staff/protocoles" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

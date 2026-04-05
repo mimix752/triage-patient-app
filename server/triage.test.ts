@@ -20,7 +20,7 @@ import {
   pickActivePatientEntryLink,
 } from "../shared/accessControl";
 import { countPendingTreatmentCases, isCasePendingTreatment, triageStatusLabels } from "../shared/caseStatus";
-import { resolvePublicOrigin } from "../shared/publicOrigin";
+import { resolvePublicOrigin, resolveRequestPublicOrigin } from "../shared/publicOrigin";
 
 describe("computeTriageAssessment", () => {
   it("classe un patient critique en urgence vitale en présence de signes vitaux instables", () => {
@@ -368,6 +368,38 @@ describe("public origin helper", () => {
     });
 
     expect(origin).toBe("http://127.0.0.1:3000");
+  });
+});
+
+describe("request public origin helper", () => {
+  it("préfère x-forwarded-origin lorsqu’il est public", () => {
+    const origin = resolveRequestPublicOrigin({
+      host: "127.0.0.1:3000",
+      "x-forwarded-origin": "https://3000-demo.manus.computer",
+      "x-forwarded-host": "127.0.0.1:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    expect(origin).toBe("https://3000-demo.manus.computer");
+  });
+
+  it("retombe sur le host transféré lorsqu’aucune origine explicite n’est fournie", () => {
+    const origin = resolveRequestPublicOrigin({
+      host: "127.0.0.1:3000",
+      "x-forwarded-host": "3000-demo.manus.computer",
+      "x-forwarded-proto": "https",
+    });
+
+    expect(origin).toBe("https://3000-demo.manus.computer");
+  });
+
+  it("ignore un host purement local et retourne une chaîne vide en dernier recours serveur", () => {
+    const origin = resolveRequestPublicOrigin({
+      host: "127.0.0.1:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    expect(origin).toBe("");
   });
 });
 

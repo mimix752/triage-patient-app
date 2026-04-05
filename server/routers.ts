@@ -47,6 +47,7 @@ import {
   type AiClinicalInsights,
 } from "./triage";
 import { storagePut } from "./storage";
+import { resolveRequestPublicOrigin } from "../shared/publicOrigin";
 
 const intakeMethodSchema = z.enum(["ocr", "manuel", "vocal"]);
 const manualPrioritySchema = z.enum(["urgence_vitale", "urgence", "semi_urgence", "non_urgent"]);
@@ -752,18 +753,21 @@ export const appRouter = router({
       };
     }),
     guidedQuestions: publicProcedure.query(() => guidedQuestions),
-    publicPatientEntry: publicProcedure.query(async () => {
+    publicPatientEntry: publicProcedure.query(async ({ ctx }) => {
       const now = Date.now();
       const links = await listPatientFormLinks();
       const activeLink = links.find((link) => {
         const expiresAt = link.expiresAt ? new Date(link.expiresAt).getTime() : null;
         return link.isActive && (!expiresAt || expiresAt > now);
       });
+      const publicOrigin = resolveRequestPublicOrigin(ctx.req.headers);
 
       if (activeLink) {
+        const patientPath = `/patient/${activeLink.token}`;
         return {
           link: activeLink,
-          patientPath: `/patient/${activeLink.token}`,
+          patientPath,
+          patientUrl: publicOrigin ? `${publicOrigin}${patientPath}` : "",
         };
       }
 
@@ -775,10 +779,12 @@ export const appRouter = router({
         isActive: true,
         expiresAt: null,
       });
+      const patientPath = `/patient/${token}`;
 
       return {
         link,
-        patientPath: `/patient/${token}`,
+        patientPath,
+        patientUrl: publicOrigin ? `${publicOrigin}${patientPath}` : "",
       };
     }),
     transcribeVoiceLive: publicProcedure
