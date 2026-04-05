@@ -881,9 +881,9 @@ function StaffPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 lg:gap-6">
-        <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_26%),radial-gradient(circle_at_85%_12%,_rgba(59,130,246,0.14),_transparent_24%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(241,245,249,0.94))] p-5 shadow-[0_30px_90px_rgba(15,23,42,0.08)] sm:p-7 xl:p-8">
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_26%),radial-gradient(circle_at_85%_12%,_rgba(59,130,246,0.14),_transparent_24%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(241,245,249,0.94))] p-5 shadow-[0_30px_90px_rgba(15,23,42,0.08)] sm:p-7 xl:p-8" style={{marginTop: '17px', marginBottom: '-13px'}}>
           <div className="absolute inset-x-6 top-5 flex justify-end sm:inset-x-auto sm:right-5">
-              <div className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur">
+              <div className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur" style={{marginTop: '-15px'}}>
                 Espace personnel clinique
               </div>
 
@@ -923,7 +923,7 @@ function StaffPage() {
                 <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={() => setLocation("/staff/tableau-de-bord")}>
                   Salle d’attente
                 </Button>
-                <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={logout}>
+                <Button variant="outline" className="h-12 w-full justify-center rounded-2xl border-white/80 bg-white/80 px-6 shadow-sm hover:bg-white sm:w-auto" onClick={logout} style={{backgroundColor: '#ff0000'}}>
                   Déconnexion
                 </Button>
               </div>
@@ -966,7 +966,7 @@ function StaffPage() {
             </div>
 
             <div className="space-y-3 lg:max-w-[20.75rem] lg:justify-self-end lg:pt-1 xl:max-w-[22rem]">
-              <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)]">
+              <Card className="rounded-[1.35rem] border border-blue-100 bg-white/86 shadow-[0_16px_36px_rgba(15,23,42,0.055)]" style={{marginTop: '22px'}}>
                 <CardContent className="space-y-3 p-4 sm:p-5">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pilotage de flux</p>
